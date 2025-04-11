@@ -22,6 +22,7 @@ import {
 } from "@/components/ui/select";
 import { useToast } from '@/components/ui/use-toast';
 import { Badge } from '@/components/ui/badge';
+import { JobPrintables } from '@/components/jobs/JobPrintables';
 
 // Demo user data - in a real app, this would come from authentication
 const currentTechnician = {
@@ -41,6 +42,9 @@ const technicianJobs = [
     afterImages: [],
     createdAt: '2025-04-10',
     dueDate: '2025-04-15',
+    serialNumber: 'SN12345678',
+    customer: 'John Smith',
+    phoneNumber: '555-123-4567'
   },
   {
     id: 'JOB-1003',
@@ -52,6 +56,9 @@ const technicianJobs = [
     afterImages: [],
     createdAt: '2025-04-08',
     dueDate: '2025-04-18',
+    serialNumber: 'RZ8G61LCX2P',
+    customer: 'Michael Brown',
+    phoneNumber: '555-345-6789'
   },
   {
     id: 'JOB-1005',
@@ -63,6 +70,9 @@ const technicianJobs = [
     afterImages: [],
     createdAt: '2025-04-06',
     dueDate: '2025-04-13',
+    serialNumber: 'DMPWH8MYHJKT',
+    customer: 'David Wilson',
+    phoneNumber: '555-567-8901'
   },
 ];
 
@@ -82,11 +92,12 @@ const TechnicianDashboard = () => {
       return false;
     }
     
-    // Apply search term
+    // Apply search term including serial number
     return (
       job.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
       job.deviceType.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      job.issue.toLowerCase().includes(searchTerm.toLowerCase())
+      job.issue.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (job.serialNumber && job.serialNumber.toLowerCase().includes(searchTerm.toLowerCase()))
     );
   });
 
@@ -182,7 +193,7 @@ const TechnicianDashboard = () => {
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 h-4 w-4" />
                 <Input
-                  placeholder="Search jobs..."
+                  placeholder="Search jobs, serial numbers..."
                   className="pl-10 w-[250px]"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
@@ -198,6 +209,7 @@ const TechnicianDashboard = () => {
                 <TableRow>
                   <TableHead>Job ID</TableHead>
                   <TableHead>Device/Issue</TableHead>
+                  <TableHead>Serial Number</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Due Date</TableHead>
                   <TableHead>Actions</TableHead>
@@ -211,16 +223,22 @@ const TechnicianDashboard = () => {
                       <div>{job.deviceType}</div>
                       <div className="text-gray-500">{job.issue}</div>
                     </TableCell>
+                    <TableCell className="font-mono text-xs">
+                      {job.serialNumber || 'N/A'}
+                    </TableCell>
                     <TableCell>{getStatusBadge(job.status)}</TableCell>
                     <TableCell>{job.dueDate}</TableCell>
                     <TableCell>
-                      <Button 
-                        variant="ghost" 
-                        size="sm" 
-                        onClick={() => handleSelectJob(job)}
-                      >
-                        Select
-                      </Button>
+                      <div className="flex items-center space-x-2">
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          onClick={() => handleSelectJob(job)}
+                        >
+                          Select
+                        </Button>
+                        <JobPrintables job={job} />
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -247,6 +265,10 @@ const TechnicianDashboard = () => {
                 <div>
                   <label className="text-sm font-medium">Device</label>
                   <div className="mt-1">{selectedJob.deviceType}</div>
+                </div>
+                <div>
+                  <label className="text-sm font-medium">Serial Number</label>
+                  <div className="mt-1 font-mono text-sm">{selectedJob.serialNumber || 'Not provided'}</div>
                 </div>
                 <div>
                   <label className="text-sm font-medium">Issue</label>

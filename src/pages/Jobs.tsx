@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { PlusCircle, Search, Filter, MoreHorizontal, Clipboard, Bell } from 'lucide-react';
+import { PlusCircle, Search, Filter, MoreHorizontal, Clipboard, Bell, FileText, Tag } from 'lucide-react';
 import { 
   DropdownMenu,
   DropdownMenuContent,
@@ -21,6 +21,17 @@ import {
 import { useToast } from '@/components/ui/use-toast';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { JobPrintables } from '@/components/jobs/JobPrintables';
+import { sendEmailNotification } from '@/utils/notifications';
+import { 
+  Dialog, 
+  DialogContent, 
+  DialogHeader, 
+  DialogTitle, 
+  DialogFooter,
+  DialogDescription
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
 
 // Demo data
 const jobs = [
@@ -34,7 +45,10 @@ const jobs = [
     createdAt: '2025-04-10',
     dueDate: '2025-04-15',
     assignedTo: 'Mike Technician',
-    hasNotification: true
+    hasNotification: true,
+    serialNumber: 'SN12345678',
+    customerEmail: 'john.smith@example.com',
+    phoneNumber: '555-123-4567'
   },
   {
     id: 'JOB-1002',
@@ -46,7 +60,10 @@ const jobs = [
     createdAt: '2025-04-09',
     dueDate: '2025-04-16',
     assignedTo: 'Lisa Technician',
-    hasNotification: false
+    hasNotification: false,
+    serialNumber: 'C02XL0GHJGH5',
+    customerEmail: 'sarah.j@example.com',
+    phoneNumber: '555-234-5678'
   },
   {
     id: 'JOB-1003',
@@ -58,7 +75,10 @@ const jobs = [
     createdAt: '2025-04-08',
     dueDate: '2025-04-18',
     assignedTo: 'Mike Technician',
-    hasNotification: false
+    hasNotification: false,
+    serialNumber: 'RZ8G61LCX2P',
+    customerEmail: 'michael.b@example.com',
+    phoneNumber: '555-345-6789'
   },
   {
     id: 'JOB-1004',
@@ -70,7 +90,10 @@ const jobs = [
     createdAt: '2025-04-07',
     dueDate: '2025-04-11',
     assignedTo: 'Lisa Technician',
-    hasNotification: true
+    hasNotification: true,
+    serialNumber: 'JN2YRNM',
+    customerEmail: 'emily.d@example.com',
+    phoneNumber: '555-456-7890'
   },
   {
     id: 'JOB-1005',
@@ -82,7 +105,10 @@ const jobs = [
     createdAt: '2025-04-06',
     dueDate: '2025-04-13',
     assignedTo: 'Mike Technician',
-    hasNotification: true
+    hasNotification: true,
+    serialNumber: 'DMPWH8MYHJKT',
+    customerEmail: 'david.w@example.com',
+    phoneNumber: '555-567-8901'
   },
 ];
 
@@ -91,12 +117,27 @@ const Jobs = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [showNotifications, setShowNotifications] = useState(false);
+  const [isNewJobDialogOpen, setIsNewJobDialogOpen] = useState(false);
+  const [newJob, setNewJob] = useState({
+    customer: '',
+    device: '',
+    issue: '',
+    serialNumber: '',
+    customerEmail: '',
+    phoneNumber: ''
+  });
 
   const handleNewJob = () => {
+    setIsNewJobDialogOpen(true);
+  };
+
+  const handleCreateJob = () => {
+    setIsNewJobDialogOpen(false);
     toast({
-      title: "Create Job",
-      description: "New job form would open here.",
+      title: "Job Created",
+      description: "New repair job has been created successfully.",
     });
+    // In a real app, this would add the job to the database
   };
 
   const getStatusBadge = (status: string) => {
@@ -143,12 +184,13 @@ const Jobs = () => {
       return false;
     }
     
-    // Apply search term filter
+    // Apply search term filter including serial number
     return (
       job.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
       job.customer.toLowerCase().includes(searchTerm.toLowerCase()) ||
       job.device.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      job.issue.toLowerCase().includes(searchTerm.toLowerCase())
+      job.issue.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (job.serialNumber && job.serialNumber.toLowerCase().includes(searchTerm.toLowerCase()))
     );
   });
 
@@ -162,13 +204,34 @@ const Jobs = () => {
     });
   };
 
-  const handleStatusChange = (jobId: string, newStatus: string) => {
+  const handleStatusChange = async (jobId: string, newStatus: string) => {
+    // Find the job
+    const job = jobs.find(j => j.id === jobId);
+    if (!job) return;
+    
     // In a real app, this would update the job status in the database
     // For demo purposes, we'll just show a toast
     toast({
       title: "Status Updated",
       description: `Job ${jobId} status changed to ${newStatus}`,
     });
+    
+    // Send email notification for ready for delivery or completed status
+    if (newStatus === 'ready-for-delivery' || newStatus === 'completed') {
+      try {
+        await sendEmailNotification(job.customerEmail, job.id, newStatus);
+        toast({
+          title: "Email Notification Sent",
+          description: `Customer has been notified about status change for job ${jobId}`,
+        });
+      } catch (error) {
+        toast({
+          title: "Email Failed",
+          description: "Failed to send email notification to customer",
+          variant: "destructive"
+        });
+      }
+    }
   };
 
   return (
@@ -250,7 +313,7 @@ const Jobs = () => {
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 h-4 w-4" />
                 <Input
-                  placeholder="Search jobs..."
+                  placeholder="Search jobs, serial numbers..."
                   className="pl-10 w-[300px]"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
@@ -268,6 +331,7 @@ const Jobs = () => {
                     <th className="px-6 py-3">Job ID</th>
                     <th className="px-6 py-3">Customer</th>
                     <th className="px-6 py-3">Device/Issue</th>
+                    <th className="px-6 py-3">Serial Number</th>
                     <th className="px-6 py-3">Status</th>
                     <th className="px-6 py-3">Priority</th>
                     <th className="px-6 py-3">Due Date</th>
@@ -289,6 +353,9 @@ const Jobs = () => {
                         <div>{job.device}</div>
                         <div className="text-gray-500">{job.issue}</div>
                       </td>
+                      <td className="px-6 py-4 font-mono text-xs">
+                        {job.serialNumber || 'N/A'}
+                      </td>
                       <td className="px-6 py-4">
                         {getStatusBadge(job.status)}
                       </td>
@@ -298,21 +365,35 @@ const Jobs = () => {
                       <td className="px-6 py-4">{job.dueDate}</td>
                       <td className="px-6 py-4">{job.assignedTo}</td>
                       <td className="px-6 py-4 text-right">
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon" className="h-8 w-8">
-                              <MoreHorizontal className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem>View Details</DropdownMenuItem>
-                            <DropdownMenuItem>Update Status</DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem>Add Parts</DropdownMenuItem>
-                            <DropdownMenuItem>Create Invoice</DropdownMenuItem>
-                            <DropdownMenuItem>Message Customer</DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
+                        <div className="flex items-center justify-end">
+                          <JobPrintables job={job} />
+                          
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="icon" className="h-8 w-8">
+                                <MoreHorizontal className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem>View Details</DropdownMenuItem>
+                              <DropdownMenuItem>Update Status</DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem>Add Parts</DropdownMenuItem>
+                              <DropdownMenuItem>Create Invoice</DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => 
+                                sendEmailNotification(job.customerEmail, job.id, job.status)
+                                  .then(() => {
+                                    toast({
+                                      title: "Email Sent",
+                                      description: `Customer has been notified about job ${job.id}`,
+                                    });
+                                  })
+                              }>
+                                Message Customer
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -328,6 +409,91 @@ const Jobs = () => {
           </div>
         </CardContent>
       </Card>
+
+      {/* New Job Dialog */}
+      <Dialog open={isNewJobDialogOpen} onOpenChange={setIsNewJobDialogOpen}>
+        <DialogContent className="sm:max-w-[525px]">
+          <DialogHeader>
+            <DialogTitle>Create New Repair Job</DialogTitle>
+            <DialogDescription>
+              Enter the details for the new repair job. All fields are required.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="customer" className="text-right">
+                Customer
+              </Label>
+              <Input
+                id="customer"
+                value={newJob.customer}
+                onChange={(e) => setNewJob({ ...newJob, customer: e.target.value })}
+                className="col-span-3"
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="email" className="text-right">
+                Email
+              </Label>
+              <Input
+                id="email"
+                type="email"
+                value={newJob.customerEmail}
+                onChange={(e) => setNewJob({ ...newJob, customerEmail: e.target.value })}
+                className="col-span-3"
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="phone" className="text-right">
+                Phone
+              </Label>
+              <Input
+                id="phone"
+                value={newJob.phoneNumber}
+                onChange={(e) => setNewJob({ ...newJob, phoneNumber: e.target.value })}
+                className="col-span-3"
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="device" className="text-right">
+                Device
+              </Label>
+              <Input
+                id="device"
+                value={newJob.device}
+                onChange={(e) => setNewJob({ ...newJob, device: e.target.value })}
+                className="col-span-3"
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="serial" className="text-right">
+                Serial Number
+              </Label>
+              <Input
+                id="serial"
+                value={newJob.serialNumber}
+                onChange={(e) => setNewJob({ ...newJob, serialNumber: e.target.value })}
+                className="col-span-3"
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="issue" className="text-right">
+                Issue
+              </Label>
+              <Input
+                id="issue"
+                value={newJob.issue}
+                onChange={(e) => setNewJob({ ...newJob, issue: e.target.value })}
+                className="col-span-3"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsNewJobDialogOpen(false)}>Cancel</Button>
+            <Button onClick={handleCreateJob}>Create Job</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
