@@ -2,7 +2,7 @@
 import React from 'react';
 import { cn } from '@/lib/utils';
 import { NavLink } from 'react-router-dom';
-import { Home, Users, Clipboard, Package, FileText, Mail, Settings, LogOut, Tool } from 'lucide-react';
+import { Home, Users, Clipboard, Package, FileText, Mail, Settings, LogOut, Wrench } from 'lucide-react';
 
 interface SidebarProps {
   className?: string;
@@ -120,7 +120,7 @@ const Sidebar = ({ className, userRole = 'admin' }: SidebarProps) => {
                 )
               }
             >
-              <Tool className="w-5 h-5 mr-3" />
+              <Wrench className="w-5 h-5 mr-3" />
               My Repairs
             </NavLink>
           </>
