@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import { Progress } from '@/components/ui/progress';
+import { useNavigate } from 'react-router-dom';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
 // Demo data for charts and stats
@@ -29,12 +30,55 @@ const recentJobs = [
 
 const Dashboard = () => {
   const { toast } = useToast();
+  const navigate = useNavigate();
 
   const handleNewJobClick = () => {
+    navigate('/jobs');
+    // Give time for navigation then show the dialog
+    setTimeout(() => {
+      window.dispatchEvent(new CustomEvent('open-new-job-dialog'));
+    }, 100);
+  };
+
+  const handleViewAllJobs = () => {
+    navigate('/jobs');
+  };
+
+  const handleViewFullReport = () => {
     toast({
-      title: "Create Job",
-      description: "The new job form would open here.",
+      title: "Report Generation",
+      description: "Generating full repair report...",
     });
+    // Simulate report generation
+    setTimeout(() => {
+      toast({
+        title: "Report Ready",
+        description: "Your full repair report is ready to download.",
+      });
+    }, 1500);
+  };
+
+  const handleQuickAction = (action: string) => {
+    switch(action) {
+      case 'add-customer':
+        navigate('/customers');
+        setTimeout(() => {
+          window.dispatchEvent(new CustomEvent('open-add-customer-dialog'));
+        }, 100);
+        break;
+      case 'update-inventory':
+        navigate('/inventory');
+        break;
+      case 'create-invoice':
+        navigate('/invoices');
+        break;
+      default:
+        break;
+    }
+  };
+
+  const handleViewJobDetails = (jobId: string) => {
+    navigate(`/jobs?jobId=${jobId}`);
   };
 
   return (
@@ -139,7 +183,11 @@ const Dashboard = () => {
               <Progress value={10} className="h-2" />
             </div>
             <div className="pt-4">
-              <Button variant="outline" className="w-full border-repairam text-repairam hover:bg-repairam-50 hover:text-repairam-dark">
+              <Button 
+                variant="outline" 
+                className="w-full border-repairam text-repairam hover:bg-repairam-50 hover:text-repairam-dark"
+                onClick={handleViewFullReport}
+              >
                 View Full Report <ArrowUpRight className="ml-2 h-4 w-4" />
               </Button>
             </div>
@@ -150,7 +198,7 @@ const Dashboard = () => {
       <div className="space-y-4">
         <div className="flex justify-between items-center">
           <h2 className="text-lg font-semibold">Recent Jobs</h2>
-          <Button variant="link" className="text-repairam hover:text-repairam-dark p-0">
+          <Button variant="link" className="text-repairam hover:text-repairam-dark p-0" onClick={handleViewAllJobs}>
             View All Jobs
           </Button>
         </div>
@@ -177,7 +225,7 @@ const Dashboard = () => {
                     <td className="px-6 py-4">{job.date}</td>
                     <td className="px-6 py-4">
                       <span 
-                        className={`status-pill ${
+                        className={`inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium ${
                           job.status === 'completed' 
                             ? 'bg-green-100 text-green-800' 
                             : job.status === 'in-progress' 
@@ -193,7 +241,12 @@ const Dashboard = () => {
                       </span>
                     </td>
                     <td className="px-6 py-4 text-right space-x-2">
-                      <Button variant="ghost" size="sm" className="h-8 px-2 text-gray-500">
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        className="h-8 px-2 text-gray-500"
+                        onClick={() => handleViewJobDetails(job.id)}
+                      >
                         View
                       </Button>
                     </td>
@@ -211,13 +264,25 @@ const Dashboard = () => {
             <CardTitle className="text-sm font-medium">Quick Actions</CardTitle>
           </CardHeader>
           <CardContent className="space-y-2 pt-2">
-            <Button variant="outline" className="w-full justify-start">
+            <Button 
+              variant="outline" 
+              className="w-full justify-start"
+              onClick={() => handleQuickAction('add-customer')}
+            >
               <Users className="mr-2 h-4 w-4" /> Add New Customer
             </Button>
-            <Button variant="outline" className="w-full justify-start">
+            <Button 
+              variant="outline" 
+              className="w-full justify-start"
+              onClick={() => handleQuickAction('update-inventory')}
+            >
               <Package className="mr-2 h-4 w-4" /> Update Inventory
             </Button>
-            <Button variant="outline" className="w-full justify-start">
+            <Button 
+              variant="outline" 
+              className="w-full justify-start"
+              onClick={() => handleQuickAction('create-invoice')}
+            >
               <FileText className="mr-2 h-4 w-4" /> Create Invoice
             </Button>
           </CardContent>

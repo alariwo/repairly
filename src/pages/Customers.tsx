@@ -1,9 +1,9 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { PlusCircle, Search, Filter, ChevronDown, MoreHorizontal, UserPlus } from 'lucide-react';
+import { PlusCircle, Search, Filter, ChevronDown, MoreHorizontal, UserPlus, Mail } from 'lucide-react';
 import { 
   DropdownMenu,
   DropdownMenuContent,
@@ -11,6 +11,16 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { useToast } from '@/components/ui/use-toast';
+import { useNavigate } from 'react-router-dom';
+import {
+  Dialog, 
+  DialogContent, 
+  DialogHeader, 
+  DialogTitle, 
+  DialogFooter,
+  DialogDescription
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
 
 // Demo data
 const customers = [
@@ -68,20 +78,121 @@ const customers = [
 
 const Customers = () => {
   const { toast } = useToast();
+  const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
+  const [isAddCustomerDialogOpen, setIsAddCustomerDialogOpen] = useState(false);
+  const [isCustomerDetailsDialogOpen, setIsCustomerDetailsDialogOpen] = useState(false);
+  const [selectedCustomer, setSelectedCustomer] = useState<typeof customers[0] | null>(null);
+  const [newCustomer, setNewCustomer] = useState({
+    name: '',
+    email: '',
+    phone: '',
+    location: '',
+  });
+  const [localCustomers, setLocalCustomers] = useState(customers);
+
+  useEffect(() => {
+    // Listen for custom event to open add customer dialog
+    const handleOpenAddCustomerDialog = () => {
+      setIsAddCustomerDialogOpen(true);
+    };
+    
+    window.addEventListener('open-add-customer-dialog', handleOpenAddCustomerDialog);
+    
+    return () => {
+      window.removeEventListener('open-add-customer-dialog', handleOpenAddCustomerDialog);
+    };
+  }, []);
 
   const handleAddCustomer = () => {
+    setIsAddCustomerDialogOpen(true);
+  };
+
+  const handleCreateCustomer = () => {
+    // Validate form
+    if (!newCustomer.name || !newCustomer.email) {
+      toast({
+        title: "Missing Information",
+        description: "Please provide at least a name and email.",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    // Add the new customer
+    const newId = Math.max(...localCustomers.map(c => c.id)) + 1;
+    const customer = {
+      ...newCustomer,
+      id: newId,
+      jobsCompleted: 0,
+      totalSpent: 0,
+      lastJob: 'N/A'
+    };
+    
+    setLocalCustomers([customer, ...localCustomers]);
+    setIsAddCustomerDialogOpen(false);
+    
+    // Reset form
+    setNewCustomer({
+      name: '',
+      email: '',
+      phone: '',
+      location: '',
+    });
+    
     toast({
-      title: "Add Customer",
-      description: "Customer form would open here.",
+      title: "Customer Added",
+      description: `${customer.name} has been added to your customers.`,
     });
   };
 
-  const filteredCustomers = customers.filter(customer => 
+  const filteredCustomers = localCustomers.filter(customer => 
     customer.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     customer.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
     customer.phone.includes(searchTerm)
   );
+
+  const handleViewDetails = (customer: typeof customers[0]) => {
+    setSelectedCustomer(customer);
+    setIsCustomerDetailsDialogOpen(true);
+  };
+
+  const handleEditCustomer = (customer: typeof customers[0]) => {
+    setSelectedCustomer(customer);
+    // Pre-fill the form with customer data
+    setNewCustomer({
+      name: customer.name,
+      email: customer.email,
+      phone: customer.phone,
+      location: customer.location,
+    });
+    setIsAddCustomerDialogOpen(true);
+  };
+
+  const handleCreateJobForCustomer = (customer: typeof customers[0]) => {
+    // Navigate to jobs page and dispatch event to open new job dialog
+    navigate('/jobs');
+    // Use a timeout to ensure navigation completes first
+    setTimeout(() => {
+      window.dispatchEvent(new CustomEvent('open-new-job-dialog', { 
+        detail: { customer: customer.name, email: customer.email, phone: customer.phone } 
+      }));
+    }, 100);
+  };
+
+  const handleMessageCustomer = (customer: typeof customers[0]) => {
+    toast({
+      title: "Message Sent",
+      description: `A message has been sent to ${customer.name}.`,
+    });
+  };
+
+  const handleFilterClick = () => {
+    toast({
+      title: "Filter Options",
+      description: "Advanced filtering options would appear here.",
+    });
+  };
 
   return (
     <div className="space-y-6">
@@ -106,7 +217,7 @@ const Customers = () => {
                   onChange={(e) => setSearchTerm(e.target.value)}
                 />
               </div>
-              <Button variant="outline" size="icon">
+              <Button variant="outline" size="icon" onClick={handleFilterClick}>
                 <Filter className="h-4 w-4" />
               </Button>
             </div>
@@ -147,10 +258,18 @@ const Customers = () => {
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
-                            <DropdownMenuItem>View Details</DropdownMenuItem>
-                            <DropdownMenuItem>Edit Customer</DropdownMenuItem>
-                            <DropdownMenuItem>Create Job</DropdownMenuItem>
-                            <DropdownMenuItem>Message</DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleViewDetails(customer)}>
+                              View Details
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleEditCustomer(customer)}>
+                              Edit Customer
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleCreateJobForCustomer(customer)}>
+                              Create Job
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleMessageCustomer(customer)}>
+                              Message
+                            </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </td>
@@ -168,6 +287,151 @@ const Customers = () => {
           </div>
         </CardContent>
       </Card>
+
+      {/* Add/Edit Customer Dialog */}
+      <Dialog open={isAddCustomerDialogOpen} onOpenChange={setIsAddCustomerDialogOpen}>
+        <DialogContent className="sm:max-w-[525px]">
+          <DialogHeader>
+            <DialogTitle>{selectedCustomer ? 'Edit Customer' : 'Add New Customer'}</DialogTitle>
+            <DialogDescription>
+              {selectedCustomer 
+                ? 'Update customer information below.' 
+                : 'Enter the details for the new customer. Name and email are required.'}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="name" className="text-right">
+                Name
+              </Label>
+              <Input
+                id="name"
+                value={newCustomer.name}
+                onChange={(e) => setNewCustomer({ ...newCustomer, name: e.target.value })}
+                className="col-span-3"
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="customer-email" className="text-right">
+                Email
+              </Label>
+              <Input
+                id="customer-email"
+                type="email"
+                value={newCustomer.email}
+                onChange={(e) => setNewCustomer({ ...newCustomer, email: e.target.value })}
+                className="col-span-3"
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="customer-phone" className="text-right">
+                Phone
+              </Label>
+              <Input
+                id="customer-phone"
+                value={newCustomer.phone}
+                onChange={(e) => setNewCustomer({ ...newCustomer, phone: e.target.value })}
+                className="col-span-3"
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="location" className="text-right">
+                Location
+              </Label>
+              <Input
+                id="location"
+                value={newCustomer.location}
+                onChange={(e) => setNewCustomer({ ...newCustomer, location: e.target.value })}
+                className="col-span-3"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => {
+              setIsAddCustomerDialogOpen(false);
+              setSelectedCustomer(null);
+              setNewCustomer({ name: '', email: '', phone: '', location: '' });
+            }}>
+              Cancel
+            </Button>
+            <Button onClick={handleCreateCustomer}>
+              {selectedCustomer ? 'Update Customer' : 'Add Customer'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Customer Details Dialog */}
+      <Dialog open={isCustomerDetailsDialogOpen} onOpenChange={setIsCustomerDetailsDialogOpen}>
+        {selectedCustomer && (
+          <DialogContent className="sm:max-w-[600px]">
+            <DialogHeader>
+              <DialogTitle>Customer Details</DialogTitle>
+            </DialogHeader>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <h4 className="text-sm font-medium mb-1">Name</h4>
+                <p>{selectedCustomer.name}</p>
+              </div>
+              <div>
+                <h4 className="text-sm font-medium mb-1">Email</h4>
+                <p>{selectedCustomer.email}</p>
+              </div>
+              <div>
+                <h4 className="text-sm font-medium mb-1">Phone</h4>
+                <p>{selectedCustomer.phone}</p>
+              </div>
+              <div>
+                <h4 className="text-sm font-medium mb-1">Location</h4>
+                <p>{selectedCustomer.location}</p>
+              </div>
+              <div>
+                <h4 className="text-sm font-medium mb-1">Jobs Completed</h4>
+                <p>{selectedCustomer.jobsCompleted}</p>
+              </div>
+              <div>
+                <h4 className="text-sm font-medium mb-1">Total Spent</h4>
+                <p>${selectedCustomer.totalSpent}</p>
+              </div>
+              <div>
+                <h4 className="text-sm font-medium mb-1">Last Job</h4>
+                <p>{selectedCustomer.lastJob}</p>
+              </div>
+            </div>
+            <DialogFooter className="flex justify-between items-center">
+              <Button 
+                variant="outline" 
+                className="flex items-center gap-1"
+                onClick={() => {
+                  handleMessageCustomer(selectedCustomer);
+                  setIsCustomerDetailsDialogOpen(false);
+                }}
+              >
+                <Mail className="h-4 w-4" /> Send Message
+              </Button>
+              <div className="space-x-2">
+                <Button 
+                  variant="outline" 
+                  onClick={() => {
+                    handleEditCustomer(selectedCustomer);
+                    setIsCustomerDetailsDialogOpen(false);
+                  }}
+                >
+                  Edit Customer
+                </Button>
+                <Button
+                  onClick={() => {
+                    handleCreateJobForCustomer(selectedCustomer);
+                    setIsCustomerDetailsDialogOpen(false);
+                  }}
+                >
+                  Create Job
+                </Button>
+              </div>
+            </DialogFooter>
+          </DialogContent>
+        )}
+      </Dialog>
     </div>
   );
 };
