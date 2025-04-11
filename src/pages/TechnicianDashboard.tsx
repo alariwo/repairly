@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -159,6 +158,20 @@ const TechnicianDashboard = () => {
     }
   };
 
+  const transformJobForPrintables = (job: typeof technicianJobs[0]) => {
+    return {
+      id: job.id,
+      customer: job.customer,
+      device: job.deviceType,
+      issue: job.issue,
+      status: job.status,
+      createdAt: job.createdAt,
+      assignedTo: currentTechnician.name,
+      serialNumber: job.serialNumber,
+      phoneNumber: job.phoneNumber
+    };
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
@@ -237,7 +250,7 @@ const TechnicianDashboard = () => {
                         >
                           Select
                         </Button>
-                        <JobPrintables job={job} />
+                        <JobPrintables job={transformJobForPrintables(job)} />
                       </div>
                     </TableCell>
                   </TableRow>
