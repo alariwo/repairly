@@ -107,24 +107,12 @@ export const JobPrintables: React.FC<JobPrintablesProps> = ({ job }) => {
                 <h4 className="font-semibold">Device Details</h4>
                 <p className="mt-2">{job.device}</p>
                 <p>Serial Number: {job.serialNumber || 'Not provided'}</p>
-                <p>Status: <span className="font-medium">{job.status.replace('-', ' ')}</span></p>
               </div>
             </div>
             
             <div className="mb-6">
               <h4 className="font-semibold">Reported Issue</h4>
               <p className="mt-2">{job.issue}</p>
-            </div>
-            
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <h4 className="font-semibold">Assigned Technician</h4>
-                <p className="mt-2">{job.assignedTo}</p>
-              </div>
-              <div>
-                <h4 className="font-semibold">Work Notes</h4>
-                <p className="mt-2">Work notes will be filled in by technician</p>
-              </div>
             </div>
             
             <div className="mt-8">
@@ -161,7 +149,7 @@ export const JobPrintables: React.FC<JobPrintablesProps> = ({ job }) => {
                 <p className="font-medium">{job.customer.length > 15 ? job.customer.substring(0, 15) + '...' : job.customer}</p>
                 <p className="text-sm">{job.device}</p>
                 <p className="text-sm">S/N: {job.serialNumber || 'N/A'}</p>
-                <p className="text-sm font-medium mt-1">{job.status.replace('-', ' ')}</p>
+                <p className="text-sm text-gray-600">{job.issue.length > 20 ? job.issue.substring(0, 20) + '...' : job.issue}</p>
               </div>
               <div className="col-span-1 flex items-center justify-center">
                 {/* Placeholder for barcode/QR code */}
