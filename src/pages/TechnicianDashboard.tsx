@@ -35,7 +35,7 @@ const technicianJobs = [
     id: 'JOB-1001',
     deviceType: 'iPhone 12',
     issue: 'Cracked Screen',
-    status: 'received',
+    status: 'diagnosis',
     notes: '',
     beforeImages: [],
     afterImages: [],
@@ -46,7 +46,7 @@ const technicianJobs = [
     id: 'JOB-1003',
     deviceType: 'Samsung Galaxy S21',
     issue: 'Charging Port',
-    status: 'in-progress',
+    status: 'repair-in-progress',
     notes: 'Ordered replacement part',
     beforeImages: ['damaged-port.jpg'],
     afterImages: [],
@@ -57,7 +57,7 @@ const technicianJobs = [
     id: 'JOB-1005',
     deviceType: 'iPad Pro',
     issue: 'Broken Home Button',
-    status: 'in-progress',
+    status: 'repair-completed',
     notes: 'Disassembled device, waiting for parts',
     beforeImages: ['broken-button.jpg'],
     afterImages: [],
@@ -106,6 +106,14 @@ const TechnicianDashboard = () => {
         : job
     ));
     
+    // Notify admin if job is completed
+    if (jobStatus === 'repair-completed' || jobStatus === 'ready-for-delivery') {
+      toast({
+        title: "Admin Notification Sent",
+        description: `Admin has been notified about the status change for job ${selectedJob.id}.`,
+      });
+    }
+    
     // Clear selection and show success message
     setSelectedJob(null);
     toast({
@@ -125,16 +133,18 @@ const TechnicianDashboard = () => {
 
   const getStatusBadge = (status: string) => {
     switch (status) {
-      case 'received':
-        return <Badge variant="outline" className="bg-yellow-100 text-yellow-800 border-yellow-200">Received</Badge>;
-      case 'in-progress':
-        return <Badge variant="outline" className="bg-blue-100 text-blue-800 border-blue-200">In Progress</Badge>;
-      case 'completed':
-        return <Badge variant="outline" className="bg-green-100 text-green-800 border-green-200">Completed</Badge>;
-      case 'delivered':
-        return <Badge variant="outline" className="bg-purple-100 text-purple-800 border-purple-200">Delivered</Badge>;
+      case 'diagnosis':
+        return <Badge variant="outline" className="bg-orange-100 text-orange-800 border-orange-200">Diagnosis</Badge>;
+      case 'repair-in-progress':
+        return <Badge variant="outline" className="bg-blue-100 text-blue-800 border-blue-200">Repair In Progress</Badge>;
+      case 'repair-completed':
+        return <Badge variant="outline" className="bg-green-100 text-green-800 border-green-200">Repair Completed</Badge>;
+      case 'stress-test':
+        return <Badge variant="outline" className="bg-indigo-100 text-indigo-800 border-indigo-200">Stress Test</Badge>;
+      case 'ready-for-delivery':
+        return <Badge variant="outline" className="bg-teal-100 text-teal-800 border-teal-200">Ready for Delivery</Badge>;
       default:
-        return <Badge variant="outline" className="bg-gray-100 text-gray-800 border-gray-200">{status}</Badge>;
+        return <Badge variant="outline" className="bg-gray-100 text-gray-800 border-gray-200">{status.replace('-', ' ')}</Badge>;
     }
   };
 
@@ -161,10 +171,11 @@ const TechnicianDashboard = () => {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Statuses</SelectItem>
-                  <SelectItem value="received">Received</SelectItem>
-                  <SelectItem value="in-progress">In Progress</SelectItem>
-                  <SelectItem value="completed">Completed</SelectItem>
-                  <SelectItem value="delivered">Delivered</SelectItem>
+                  <SelectItem value="diagnosis">Diagnosis</SelectItem>
+                  <SelectItem value="repair-in-progress">Repair In Progress</SelectItem>
+                  <SelectItem value="repair-completed">Repair Completed</SelectItem>
+                  <SelectItem value="stress-test">Stress Test</SelectItem>
+                  <SelectItem value="ready-for-delivery">Ready for Delivery</SelectItem>
                 </SelectContent>
               </Select>
               
@@ -251,10 +262,11 @@ const TechnicianDashboard = () => {
                       <SelectValue placeholder="Update status" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="received">Received</SelectItem>
-                      <SelectItem value="in-progress">In Progress</SelectItem>
-                      <SelectItem value="completed">Completed</SelectItem>
-                      <SelectItem value="delivered">Delivered</SelectItem>
+                      <SelectItem value="diagnosis">Diagnosis</SelectItem>
+                      <SelectItem value="repair-in-progress">Repair In Progress</SelectItem>
+                      <SelectItem value="repair-completed">Repair Completed</SelectItem>
+                      <SelectItem value="stress-test">Stress Test</SelectItem>
+                      <SelectItem value="ready-for-delivery">Ready for Delivery</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
