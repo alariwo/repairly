@@ -104,17 +104,24 @@ const TechnicianDashboard = () => {
     setSelectedJob(job);
     setJobNotes(job.notes);
     setJobStatus(job.status);
+    
+    // Added toast notification for job selection
+    toast({
+      title: "Job Selected",
+      description: `You are now editing job ${job.id}`,
+    });
   };
 
   const handleJobUpdate = () => {
     if (!selectedJob) return;
     
     // Update job in the local state
-    setJobs(jobs.map(job => 
+    const updatedJobs = jobs.map(job => 
       job.id === selectedJob.id 
         ? { ...job, notes: jobNotes, status: jobStatus } 
         : job
-    ));
+    );
+    setJobs(updatedJobs);
     
     // Notify admin if job is completed
     if (jobStatus === 'repair-completed' || jobStatus === 'ready-for-delivery') {
@@ -133,12 +140,42 @@ const TechnicianDashboard = () => {
   };
 
   const handleFileUpload = (type: 'before' | 'after') => {
-    // In a real app, this would trigger a file upload dialog
-    // For demo purposes, we'll just show a toast
-    toast({
-      title: "Upload Feature",
-      description: `The ${type} image upload would open here.`,
-    });
+    // Trigger file upload dialog and handle file selection
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/*';
+    input.onchange = (event) => {
+      const file = (event.target as HTMLInputElement).files?.[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          if (!selectedJob) return;
+          
+          const updatedJobs = jobs.map(job => {
+            if (job.id === selectedJob.id) {
+              const updatedJob = { ...job };
+              if (type === 'before') {
+                updatedJob.beforeImages = [...updatedJob.beforeImages, e.target?.result as string];
+              } else {
+                updatedJob.afterImages = [...updatedJob.afterImages, e.target?.result as string];
+              }
+              return updatedJob;
+            }
+            return job;
+          });
+          
+          setJobs(updatedJobs);
+          setSelectedJob(updatedJobs.find(j => j.id === selectedJob.id) || null);
+          
+          toast({
+            title: "Image Uploaded",
+            description: `${type} image uploaded successfully for job ${selectedJob.id}`,
+          });
+        };
+        reader.readAsDataURL(file);
+      }
+    };
+    input.click();
   };
 
   const getStatusBadge = (status: string) => {
