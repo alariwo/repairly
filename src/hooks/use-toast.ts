@@ -1,3 +1,4 @@
+
 import * as React from "react"
 
 import type {
@@ -6,7 +7,7 @@ import type {
 } from "@/components/ui/toast"
 
 const TOAST_LIMIT = 1
-const TOAST_REMOVE_DELAY = 1000000
+const TOAST_REMOVE_DELAY = 5000 // Changed from 1000000 to 5000 (5 seconds)
 
 type ToasterToast = ToastProps & {
   id: string
@@ -55,6 +56,7 @@ interface State {
 
 const toastTimeouts = new Map<string, ReturnType<typeof setTimeout>>()
 
+// Debounced toast removal
 const addToRemoveQueue = (toastId: string) => {
   if (toastTimeouts.has(toastId)) {
     return
@@ -139,7 +141,21 @@ function dispatch(action: Action) {
 
 type Toast = Omit<ToasterToast, "id">
 
+// Debounced toast function to prevent too many toast notifications
+let lastToastTimestamp = 0;
+const TOAST_THROTTLE_MS = 500; // Minimum time between toasts
+
 function toast({ ...props }: Toast) {
+  const now = Date.now();
+  if (now - lastToastTimestamp < TOAST_THROTTLE_MS) {
+    return {
+      id: "",
+      dismiss: () => {},
+      update: () => {},
+    };
+  }
+  
+  lastToastTimestamp = now;
   const id = genId()
 
   const update = (props: ToasterToast) =>
