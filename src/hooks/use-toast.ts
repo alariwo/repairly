@@ -7,7 +7,7 @@ import type {
 } from "@/components/ui/toast"
 
 const TOAST_LIMIT = 1
-const TOAST_REMOVE_DELAY = 3000 // Reduced from 5000 to 3000 (3 seconds) for better performance
+const TOAST_REMOVE_DELAY = 2000 // Reduced from 3000 to 2000 ms for better performance
 
 type ToasterToast = ToastProps & {
   id: string
@@ -148,7 +148,7 @@ type Toast = Omit<ToasterToast, "id">
 
 // Improved toast throttling 
 let lastToastTimestamp = 0;
-const TOAST_THROTTLE_MS = 800; // Increased from 500 to 800ms to reduce toast frequency
+const TOAST_THROTTLE_MS = 1000; // Increased from 800 to 1000ms for more aggressive throttling
 
 function toast({ ...props }: Toast) {
   const now = Date.now();
@@ -197,6 +197,7 @@ const clearAllToasts = () => {
   dispatch({ type: "REMOVE_TOAST" });
 };
 
+// Memoized version of useState to prevent re-renders
 function useToast() {
   const [state, setState] = React.useState<State>(memoryState);
 

@@ -1,5 +1,4 @@
-
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -18,7 +17,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useToast } from '@/components/ui/use-toast';
+import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { JobPrintables } from '@/components/jobs/JobPrintables';
@@ -33,9 +32,9 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { useLocation, useNavigate } from 'react-router-dom';
+import { useLocalStorage } from '@/hooks/use-local-storage';
 
-// Demo data
-const jobs = [
+const initialJobs = [
   {
     id: 'JOB-1001',
     customer: 'John Smith',
@@ -121,6 +120,7 @@ const Jobs = () => {
   const [statusFilter, setStatusFilter] = useState('all');
   const [showNotifications, setShowNotifications] = useState(false);
   const [isNewJobDialogOpen, setIsNewJobDialogOpen] = useState(false);
+  const [localJobs, setLocalJobs] = useLocalStorage('repair-app-jobs', initialJobs);
   const [newJob, setNewJob] = useState({
     customer: '',
     device: '',
@@ -129,27 +129,42 @@ const Jobs = () => {
     customerEmail: '',
     phoneNumber: ''
   });
-  const [localJobs, setLocalJobs] = useState(jobs);
   const [activeJob, setActiveJob] = useState<string | null>(null);
   const [jobDetailsDialogOpen, setJobDetailsDialogOpen] = useState(false);
-  const [jobToView, setJobToView] = useState<typeof jobs[0] | null>(null);
+  const [jobToView, setJobToView] = useState<typeof initialJobs[0] | null>(null);
+  const dialogRef = useRef<HTMLDivElement>(null);
 
-  // Check for URL parameters or custom events
+  const safeCloseJobDetailsDialog = useCallback(() => {
+    setJobDetailsDialogOpen(false);
+    setTimeout(() => {
+      navigate('/jobs', { replace: true });
+      setJobToView(null);
+    }, 10);
+  }, [navigate]);
+
   useEffect(() => {
-    // Check URL params for jobId
     const params = new URLSearchParams(location.search);
     const jobId = params.get('jobId');
     
     if (jobId) {
-      const job = jobs.find(j => j.id === jobId);
+      const job = localJobs.find(j => j.id === jobId);
       if (job) {
         setJobToView(job);
         setJobDetailsDialogOpen(true);
       }
     }
 
-    // Listen for custom event to open new job dialog
-    const handleOpenNewJobDialog = () => {
+    const handleOpenNewJobDialog = (event: Event) => {
+      const customEvent = event as CustomEvent;
+      if (customEvent.detail) {
+        const { customer, email, phone } = customEvent.detail;
+        setNewJob(prev => ({
+          ...prev,
+          customer: customer || prev.customer,
+          customerEmail: email || prev.customerEmail,
+          phoneNumber: phone || prev.phoneNumber
+        }));
+      }
       setIsNewJobDialogOpen(true);
     };
     
@@ -158,14 +173,21 @@ const Jobs = () => {
     return () => {
       window.removeEventListener('open-new-job-dialog', handleOpenNewJobDialog);
     };
-  }, [location.search]);
+  }, [location.search, localJobs]);
 
   const handleNewJob = () => {
+    setNewJob({
+      customer: '',
+      device: '',
+      issue: '',
+      serialNumber: '',
+      customerEmail: '',
+      phoneNumber: ''
+    });
     setIsNewJobDialogOpen(true);
   };
 
   const handleCreateJob = () => {
-    // Data validation
     if (!newJob.customer || !newJob.device || !newJob.issue || !newJob.customerEmail) {
       toast({
         title: "Missing Information",
@@ -175,7 +197,6 @@ const Jobs = () => {
       return;
     }
     
-    // Create new job
     const jobId = `JOB-${Math.floor(1000 + Math.random() * 9000)}`;
     const createdJob = {
       ...newJob,
@@ -189,9 +210,7 @@ const Jobs = () => {
     };
     
     setLocalJobs([createdJob, ...localJobs]);
-    setIsNewJobDialogOpen(false);
     
-    // Reset form
     setNewJob({
       customer: '',
       device: '',
@@ -201,10 +220,14 @@ const Jobs = () => {
       phoneNumber: ''
     });
     
-    toast({
-      title: "Job Created",
-      description: `New repair job ${jobId} has been created successfully.`,
-    });
+    setTimeout(() => {
+      setIsNewJobDialogOpen(false);
+      
+      toast({
+        title: "Job Created",
+        description: `New repair job ${jobId} has been created successfully.`,
+      });
+    }, 10);
   };
 
   const getStatusBadge = (status: string) => {
@@ -246,12 +269,10 @@ const Jobs = () => {
   };
 
   const filteredJobs = localJobs.filter(job => {
-    // Apply status filter
     if (statusFilter !== 'all' && job.status !== statusFilter) {
       return false;
     }
     
-    // Apply search term filter including serial number
     return (
       job.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
       job.customer.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -265,7 +286,6 @@ const Jobs = () => {
   
   const handleClearNotifications = () => {
     setShowNotifications(false);
-    // Update jobs to mark notifications as read
     setLocalJobs(localJobs.map(job => ({
       ...job,
       hasNotification: false
@@ -277,11 +297,9 @@ const Jobs = () => {
   };
 
   const handleStatusChange = async (jobId: string, newStatus: string) => {
-    // Find the job
     const job = localJobs.find(j => j.id === jobId);
     if (!job) return;
     
-    // Update job status
     const updatedJobs = localJobs.map(j => 
       j.id === jobId 
         ? { ...j, status: newStatus } 
@@ -294,7 +312,6 @@ const Jobs = () => {
       description: `Job ${jobId} status changed to ${newStatus.replace('-', ' ')}`,
     });
     
-    // Send email notification for ready for delivery or completed status
     if (newStatus === 'ready-for-delivery' || newStatus === 'completed') {
       try {
         await sendEmailNotification(job.customerEmail, job.id, newStatus);
@@ -312,14 +329,13 @@ const Jobs = () => {
     }
   };
 
-  const handleViewDetails = (job: typeof jobs[0]) => {
+  const handleViewDetails = useCallback((job: typeof initialJobs[0]) => {
     setJobToView(job);
     setJobDetailsDialogOpen(true);
-    // Update URL with job ID but don't reload the page
     navigate(`/jobs?jobId=${job.id}`, { replace: true });
-  };
+  }, [navigate]);
 
-  const handleMenuAction = (action: string, job: typeof jobs[0]) => {
+  const handleMenuAction = useCallback((action: string, job: typeof initialJobs[0]) => {
     switch (action) {
       case 'view-details':
         handleViewDetails(job);
@@ -363,7 +379,7 @@ const Jobs = () => {
       default:
         break;
     }
-  };
+  }, [handleViewDetails, navigate, toast]);
 
   return (
     <div className="space-y-6">
@@ -545,8 +561,21 @@ const Jobs = () => {
         </CardContent>
       </Card>
 
-      {/* New Job Dialog */}
-      <Dialog open={isNewJobDialogOpen} onOpenChange={setIsNewJobDialogOpen}>
+      <Dialog open={isNewJobDialogOpen} onOpenChange={(open) => {
+        if (!open) {
+          setTimeout(() => {
+            setIsNewJobDialogOpen(false);
+            setNewJob({
+              customer: '',
+              device: '',
+              issue: '',
+              serialNumber: '',
+              customerEmail: '',
+              phoneNumber: ''
+            });
+          }, 10);
+        }
+      }}>
         <DialogContent className="sm:max-w-[525px]">
           <DialogHeader>
             <DialogTitle>Create New Repair Job</DialogTitle>
@@ -624,19 +653,32 @@ const Jobs = () => {
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsNewJobDialogOpen(false)}>Cancel</Button>
+            <Button variant="outline" onClick={() => {
+              setIsNewJobDialogOpen(false);
+              setNewJob({
+                customer: '',
+                device: '',
+                issue: '',
+                serialNumber: '',
+                customerEmail: '',
+                phoneNumber: ''
+              });
+            }}>Cancel</Button>
             <Button onClick={handleCreateJob}>Create Job</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* Job Details Dialog */}
-      <Dialog open={jobDetailsDialogOpen} onOpenChange={(open) => {
-        setJobDetailsDialogOpen(open);
-        if (!open) navigate('/jobs', { replace: true });
-      }}>
+      <Dialog 
+        open={jobDetailsDialogOpen} 
+        onOpenChange={(open) => {
+          if (!open) {
+            safeCloseJobDetailsDialog();
+          }
+        }}
+      >
         {jobToView && (
-          <DialogContent className="sm:max-w-[650px]">
+          <DialogContent className="sm:max-w-[650px]" ref={dialogRef}>
             <DialogHeader>
               <DialogTitle>Job Details: {jobToView.id}</DialogTitle>
             </DialogHeader>
@@ -690,7 +732,7 @@ const Jobs = () => {
               <div className="flex gap-2">
                 <Button variant="outline" onClick={() => {
                   handleMenuAction('update-status', jobToView);
-                  setJobDetailsDialogOpen(false);
+                  safeCloseJobDetailsDialog();
                 }}>
                   Update Status
                 </Button>

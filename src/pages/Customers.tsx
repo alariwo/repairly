@@ -1,5 +1,4 @@
-
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -10,7 +9,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { useToast } from '@/components/ui/use-toast';
+import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
 import {
   Dialog, 
@@ -21,9 +20,10 @@ import {
   DialogDescription
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
+import { useLocalStorage } from '@/hooks/use-local-storage';
 
 // Demo data
-const customers = [
+const initialCustomers = [
   { 
     id: 1, 
     name: 'John Smith', 
@@ -82,14 +82,35 @@ const Customers = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [isAddCustomerDialogOpen, setIsAddCustomerDialogOpen] = useState(false);
   const [isCustomerDetailsDialogOpen, setIsCustomerDetailsDialogOpen] = useState(false);
-  const [selectedCustomer, setSelectedCustomer] = useState<typeof customers[0] | null>(null);
+  const [selectedCustomer, setSelectedCustomer] = useState<typeof initialCustomers[0] | null>(null);
   const [newCustomer, setNewCustomer] = useState({
     name: '',
     email: '',
     phone: '',
     location: '',
   });
-  const [localCustomers, setLocalCustomers] = useState(customers);
+  const [localCustomers, setLocalCustomers] = useLocalStorage('repair-app-customers', initialCustomers);
+  const dialogRef = useRef<HTMLDivElement>(null);
+
+  const safeCloseDetailsDialog = useCallback(() => {
+    setTimeout(() => {
+      setIsCustomerDetailsDialogOpen(false);
+      setSelectedCustomer(null);
+    }, 10);
+  }, []);
+
+  const safeCloseAddDialog = useCallback(() => {
+    setTimeout(() => {
+      setIsAddCustomerDialogOpen(false);
+      setSelectedCustomer(null);
+      setNewCustomer({
+        name: '',
+        email: '',
+        phone: '',
+        location: '',
+      });
+    }, 10);
+  }, []);
 
   useEffect(() => {
     // Listen for custom event to open add customer dialog
@@ -105,6 +126,12 @@ const Customers = () => {
   }, []);
 
   const handleAddCustomer = () => {
+    setNewCustomer({
+      name: '',
+      email: '',
+      phone: '',
+      location: '',
+    });
     setIsAddCustomerDialogOpen(true);
   };
 
@@ -119,31 +146,46 @@ const Customers = () => {
       return;
     }
     
-    // Add the new customer
-    const newId = Math.max(...localCustomers.map(c => c.id)) + 1;
-    const customer = {
-      ...newCustomer,
-      id: newId,
-      jobsCompleted: 0,
-      totalSpent: 0,
-      lastJob: 'N/A'
-    };
+    // Check if this is an edit or new customer
+    if (selectedCustomer) {
+      // Update existing customer
+      const updatedCustomers = localCustomers.map(c => 
+        c.id === selectedCustomer.id 
+          ? { 
+              ...c, 
+              name: newCustomer.name, 
+              email: newCustomer.email, 
+              phone: newCustomer.phone, 
+              location: newCustomer.location 
+            } 
+          : c
+      );
+      
+      setLocalCustomers(updatedCustomers);
+      toast({
+        title: "Customer Updated",
+        description: `${newCustomer.name}'s information has been updated.`,
+      });
+    } else {
+      // Add the new customer
+      const newId = Math.max(...localCustomers.map(c => c.id)) + 1;
+      const customer = {
+        ...newCustomer,
+        id: newId,
+        jobsCompleted: 0,
+        totalSpent: 0,
+        lastJob: 'N/A'
+      };
+      
+      setLocalCustomers([customer, ...localCustomers]);
+      toast({
+        title: "Customer Added",
+        description: `${customer.name} has been added to your customers.`,
+      });
+    }
     
-    setLocalCustomers([customer, ...localCustomers]);
-    setIsAddCustomerDialogOpen(false);
-    
-    // Reset form
-    setNewCustomer({
-      name: '',
-      email: '',
-      phone: '',
-      location: '',
-    });
-    
-    toast({
-      title: "Customer Added",
-      description: `${customer.name} has been added to your customers.`,
-    });
+    // Reset form and close dialog
+    safeCloseAddDialog();
   };
 
   const filteredCustomers = localCustomers.filter(customer => 
@@ -152,12 +194,12 @@ const Customers = () => {
     customer.phone.includes(searchTerm)
   );
 
-  const handleViewDetails = (customer: typeof customers[0]) => {
+  const handleViewDetails = useCallback((customer: typeof initialCustomers[0]) => {
     setSelectedCustomer(customer);
     setIsCustomerDetailsDialogOpen(true);
-  };
+  }, []);
 
-  const handleEditCustomer = (customer: typeof customers[0]) => {
+  const handleEditCustomer = useCallback((customer: typeof initialCustomers[0]) => {
     setSelectedCustomer(customer);
     // Pre-fill the form with customer data
     setNewCustomer({
@@ -167,9 +209,9 @@ const Customers = () => {
       location: customer.location,
     });
     setIsAddCustomerDialogOpen(true);
-  };
+  }, []);
 
-  const handleCreateJobForCustomer = (customer: typeof customers[0]) => {
+  const handleCreateJobForCustomer = useCallback((customer: typeof initialCustomers[0]) => {
     // Navigate to jobs page and dispatch event to open new job dialog
     navigate('/jobs');
     // Use a timeout to ensure navigation completes first
@@ -178,21 +220,26 @@ const Customers = () => {
         detail: { customer: customer.name, email: customer.email, phone: customer.phone } 
       }));
     }, 100);
-  };
+    
+    // Close the dialog if open
+    if (isCustomerDetailsDialogOpen) {
+      safeCloseDetailsDialog();
+    }
+  }, [navigate, isCustomerDetailsDialogOpen, safeCloseDetailsDialog]);
 
-  const handleMessageCustomer = (customer: typeof customers[0]) => {
+  const handleMessageCustomer = useCallback((customer: typeof initialCustomers[0]) => {
     toast({
       title: "Message Sent",
       description: `A message has been sent to ${customer.name}.`,
     });
-  };
+  }, [toast]);
 
-  const handleFilterClick = () => {
+  const handleFilterClick = useCallback(() => {
     toast({
       title: "Filter Options",
       description: "Advanced filtering options would appear here.",
     });
-  };
+  }, [toast]);
 
   return (
     <div className="space-y-6">
@@ -289,8 +336,15 @@ const Customers = () => {
       </Card>
 
       {/* Add/Edit Customer Dialog */}
-      <Dialog open={isAddCustomerDialogOpen} onOpenChange={setIsAddCustomerDialogOpen}>
-        <DialogContent className="sm:max-w-[525px]">
+      <Dialog 
+        open={isAddCustomerDialogOpen} 
+        onOpenChange={(open) => {
+          if (!open) {
+            safeCloseAddDialog();
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-[525px]" ref={dialogRef}>
           <DialogHeader>
             <DialogTitle>{selectedCustomer ? 'Edit Customer' : 'Add New Customer'}</DialogTitle>
             <DialogDescription>
@@ -347,11 +401,7 @@ const Customers = () => {
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => {
-              setIsAddCustomerDialogOpen(false);
-              setSelectedCustomer(null);
-              setNewCustomer({ name: '', email: '', phone: '', location: '' });
-            }}>
+            <Button variant="outline" onClick={safeCloseAddDialog}>
               Cancel
             </Button>
             <Button onClick={handleCreateCustomer}>
@@ -362,7 +412,14 @@ const Customers = () => {
       </Dialog>
 
       {/* Customer Details Dialog */}
-      <Dialog open={isCustomerDetailsDialogOpen} onOpenChange={setIsCustomerDetailsDialogOpen}>
+      <Dialog 
+        open={isCustomerDetailsDialogOpen} 
+        onOpenChange={(open) => {
+          if (!open) {
+            safeCloseDetailsDialog();
+          }
+        }}
+      >
         {selectedCustomer && (
           <DialogContent className="sm:max-w-[600px]">
             <DialogHeader>
@@ -404,7 +461,7 @@ const Customers = () => {
                 className="flex items-center gap-1"
                 onClick={() => {
                   handleMessageCustomer(selectedCustomer);
-                  setIsCustomerDetailsDialogOpen(false);
+                  safeCloseDetailsDialog();
                 }}
               >
                 <Mail className="h-4 w-4" /> Send Message
@@ -414,7 +471,7 @@ const Customers = () => {
                   variant="outline" 
                   onClick={() => {
                     handleEditCustomer(selectedCustomer);
-                    setIsCustomerDetailsDialogOpen(false);
+                    safeCloseDetailsDialog();
                   }}
                 >
                   Edit Customer
@@ -422,7 +479,6 @@ const Customers = () => {
                 <Button
                   onClick={() => {
                     handleCreateJobForCustomer(selectedCustomer);
-                    setIsCustomerDetailsDialogOpen(false);
                   }}
                 >
                   Create Job
