@@ -6,7 +6,7 @@ import {
   Users, Clock, CheckCircle, AlertTriangle, PlusCircle, 
   ArrowUpRight, Package, FileText 
 } from 'lucide-react';
-import { useToast } from '@/components/ui/use-toast';
+import { useToast } from '@/hooks/use-toast';
 import { Progress } from '@/components/ui/progress';
 import { useNavigate } from 'react-router-dom';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
@@ -28,8 +28,35 @@ const recentJobs = [
   { id: 'JOB-1237', customer: 'Emily Davis', service: 'PC Virus Removal', date: '2025-04-07', status: 'completed' },
 ];
 
+// Define proper type interfaces to fix TypeScript errors
+interface StatCardProps {
+  title: string;
+  icon: React.ReactNode;
+  value: string;
+  subtitle: string;
+}
+
+interface RepairJobsCardProps {
+  onViewFullReport: () => void;
+}
+
+interface JobsTableProps {
+  jobs: Array<{
+    id: string;
+    customer: string;
+    service: string;
+    date: string;
+    status: string;
+  }>;
+  onViewJobDetails: (jobId: string) => void;
+}
+
+interface QuickActionsCardProps {
+  onQuickAction: (action: string) => void;
+}
+
 // Memoized components to prevent unnecessary re-renders
-const StatCard = React.memo(({ title, icon, value, subtitle }) => (
+const StatCard = React.memo(({ title, icon, value, subtitle }: StatCardProps) => (
   <Card>
     <CardHeader className="flex flex-row items-center justify-between pb-2">
       <CardTitle className="text-sm font-medium text-gray-500">{title}</CardTitle>
@@ -63,7 +90,7 @@ const RevenueChart = React.memo(() => (
   </Card>
 ));
 
-const RepairJobsCard = React.memo(({ onViewFullReport }) => (
+const RepairJobsCard = React.memo(({ onViewFullReport }: RepairJobsCardProps) => (
   <Card>
     <CardHeader className="pb-2">
       <CardTitle>Repair Jobs</CardTitle>
@@ -103,7 +130,7 @@ const RepairJobsCard = React.memo(({ onViewFullReport }) => (
   </Card>
 ));
 
-const JobsTable = React.memo(({ jobs, onViewJobDetails }) => (
+const JobsTable = React.memo(({ jobs, onViewJobDetails }: JobsTableProps) => (
   <div className="rounded-lg border border-gray-200 overflow-hidden">
     <div className="overflow-x-auto">
       <table className="w-full text-sm text-left">
@@ -159,7 +186,7 @@ const JobsTable = React.memo(({ jobs, onViewJobDetails }) => (
   </div>
 ));
 
-const QuickActionsCard = React.memo(({ onQuickAction }) => (
+const QuickActionsCard = React.memo(({ onQuickAction }: QuickActionsCardProps) => (
   <Card>
     <CardHeader className="flex flex-row items-center justify-between pb-2">
       <CardTitle className="text-sm font-medium">Quick Actions</CardTitle>

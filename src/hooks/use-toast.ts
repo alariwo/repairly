@@ -7,7 +7,7 @@ import type {
 } from "@/components/ui/toast"
 
 const TOAST_LIMIT = 1
-const TOAST_REMOVE_DELAY = 5000 // Changed from 1000000 to 5000 (5 seconds)
+const TOAST_REMOVE_DELAY = 3000 // Reduced from 5000 to 3000 (3 seconds) for better performance
 
 type ToasterToast = ToastProps & {
   id: string
@@ -56,10 +56,12 @@ interface State {
 
 const toastTimeouts = new Map<string, ReturnType<typeof setTimeout>>()
 
-// Debounced toast removal
+// Optimized toast removal with clear timeouts
 const addToRemoveQueue = (toastId: string) => {
+  // Clear existing timeout if there is one
   if (toastTimeouts.has(toastId)) {
-    return
+    clearTimeout(toastTimeouts.get(toastId));
+    toastTimeouts.delete(toastId);
   }
 
   const timeout = setTimeout(() => {
@@ -92,8 +94,7 @@ export const reducer = (state: State, action: Action): State => {
     case "DISMISS_TOAST": {
       const { toastId } = action
 
-      // ! Side effects ! - This could be extracted into a dismissToast() action,
-      // but I'll keep it here for simplicity
+      // Side effects - handle toast dismissal
       if (toastId) {
         addToRemoveQueue(toastId)
       } else {
@@ -116,6 +117,10 @@ export const reducer = (state: State, action: Action): State => {
     }
     case "REMOVE_TOAST":
       if (action.toastId === undefined) {
+        // Clean up all timeouts when removing all toasts
+        toastTimeouts.forEach((timeout) => clearTimeout(timeout));
+        toastTimeouts.clear();
+        
         return {
           ...state,
           toasts: [],
@@ -141,13 +146,14 @@ function dispatch(action: Action) {
 
 type Toast = Omit<ToasterToast, "id">
 
-// Debounced toast function to prevent too many toast notifications
+// Improved toast throttling 
 let lastToastTimestamp = 0;
-const TOAST_THROTTLE_MS = 500; // Minimum time between toasts
+const TOAST_THROTTLE_MS = 800; // Increased from 500 to 800ms to reduce toast frequency
 
 function toast({ ...props }: Toast) {
   const now = Date.now();
   if (now - lastToastTimestamp < TOAST_THROTTLE_MS) {
+    console.log("Toast throttled");
     return {
       id: "",
       dismiss: () => {},
@@ -184,18 +190,31 @@ function toast({ ...props }: Toast) {
   }
 }
 
+// Clear all toasts and timeouts when component unmounts
+const clearAllToasts = () => {
+  toastTimeouts.forEach((timeout) => clearTimeout(timeout));
+  toastTimeouts.clear();
+  dispatch({ type: "REMOVE_TOAST" });
+};
+
 function useToast() {
-  const [state, setState] = React.useState<State>(memoryState)
+  const [state, setState] = React.useState<State>(memoryState);
 
   React.useEffect(() => {
-    listeners.push(setState)
+    listeners.push(setState);
+    
     return () => {
-      const index = listeners.indexOf(setState)
+      const index = listeners.indexOf(setState);
       if (index > -1) {
-        listeners.splice(index, 1)
+        listeners.splice(index, 1);
       }
-    }
-  }, [state])
+      
+      // If no more listeners, clear all toasts
+      if (listeners.length === 0) {
+        clearAllToasts();
+      }
+    };
+  }, []);
 
   return {
     ...state,
@@ -204,4 +223,4 @@ function useToast() {
   }
 }
 
-export { useToast, toast }
+export { useToast, toast, clearAllToasts }
