@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { PlusCircle, Search, Filter, MoreHorizontal, Clipboard, Bell, FileText, Tag, Calendar, MapPin, Flag } from 'lucide-react';
+import { PlusCircle, Search, Filter, MoreHorizontal, Clipboard, Bell, FileText, Tag, Calendar, MapPin, Flag, CalendarDays, UserRound, ListFilter } from 'lucide-react';
 import { 
   DropdownMenu,
   DropdownMenuContent,
@@ -126,6 +126,10 @@ const Jobs = () => {
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [priorityFilter, setPriorityFilter] = useState('all');
+  const [technicianFilter, setTechnicianFilter] = useState('all');
+  const [dateFilter, setDateFilter] = useState<Date | undefined>(undefined);
+  const [isFilterExpanded, setIsFilterExpanded] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [isNewJobDialogOpen, setIsNewJobDialogOpen] = useState(false);
   const [localJobs, setLocalJobs] = useLocalStorage('repair-app-jobs', initialJobs);
@@ -145,6 +149,11 @@ const Jobs = () => {
   const [jobToView, setJobToView] = useState<typeof initialJobs[0] | null>(null);
   const [localCustomers, setLocalCustomers] = useLocalStorage('repair-app-customers', []);
   const dialogRef = useRef<HTMLDivElement>(null);
+
+  const technicians = React.useMemo(() => {
+    const techSet = new Set(localJobs.map(job => job.assignedTo));
+    return Array.from(techSet);
+  }, [localJobs]);
 
   const safeCloseJobDetailsDialog = useCallback(() => {
     setJobDetailsDialogOpen(false);
@@ -318,9 +327,38 @@ const Jobs = () => {
     }
   };
 
+  const clearFilters = () => {
+    setStatusFilter('all');
+    setPriorityFilter('all');
+    setTechnicianFilter('all');
+    setDateFilter(undefined);
+    setSearchTerm('');
+  };
+
   const filteredJobs = localJobs.filter(job => {
     if (statusFilter !== 'all' && job.status !== statusFilter) {
       return false;
+    }
+    
+    if (priorityFilter !== 'all' && job.priority !== priorityFilter) {
+      return false;
+    }
+    
+    if (technicianFilter !== 'all' && job.assignedTo !== technicianFilter) {
+      return false;
+    }
+    
+    if (dateFilter) {
+      const jobDate = new Date(job.dueDate);
+      const filterDate = new Date(dateFilter);
+      
+      if (
+        jobDate.getDate() !== filterDate.getDate() ||
+        jobDate.getMonth() !== filterDate.getMonth() ||
+        jobDate.getFullYear() !== filterDate.getFullYear()
+      ) {
+        return false;
+      }
     }
     
     return (
@@ -490,26 +528,15 @@ const Jobs = () => {
           <div className="flex justify-between items-center">
             <CardTitle>Job Management</CardTitle>
             <div className="flex items-center space-x-2">
-              <Select 
-                defaultValue="all"
-                onValueChange={(value) => setStatusFilter(value)}
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={() => setIsFilterExpanded(!isFilterExpanded)}
+                className="flex items-center gap-1"
               >
-                <SelectTrigger className="w-[180px]">
-                  <SelectValue placeholder="Filter by status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Statuses</SelectItem>
-                  <SelectItem value="picked-up">Picked Up</SelectItem>
-                  <SelectItem value="received">Received</SelectItem>
-                  <SelectItem value="diagnosis">Under Diagnosis</SelectItem>
-                  <SelectItem value="repair-in-progress">Repair In Progress</SelectItem>
-                  <SelectItem value="repair-completed">Repair Completed</SelectItem>
-                  <SelectItem value="stress-test">Stress Test</SelectItem>
-                  <SelectItem value="ready-for-delivery">Ready for Delivery</SelectItem>
-                  <SelectItem value="delivered">Delivered</SelectItem>
-                  <SelectItem value="completed">Completed</SelectItem>
-                </SelectContent>
-              </Select>
+                <ListFilter className="h-4 w-4" />
+                {isFilterExpanded ? 'Hide Filters' : 'Show Filters'}
+              </Button>
               
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 h-4 w-4" />
@@ -522,6 +549,118 @@ const Jobs = () => {
               </div>
             </div>
           </div>
+          
+          {isFilterExpanded && (
+            <div className="mt-4 grid grid-cols-1 md:grid-cols-4 gap-4 bg-gray-50 p-4 rounded-md border">
+              <div>
+                <Label className="text-xs mb-1 block">Status</Label>
+                <Select 
+                  value={statusFilter}
+                  onValueChange={(value) => setStatusFilter(value)}
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Filter by status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Statuses</SelectItem>
+                    <SelectItem value="picked-up">Picked Up</SelectItem>
+                    <SelectItem value="received">Received</SelectItem>
+                    <SelectItem value="diagnosis">Under Diagnosis</SelectItem>
+                    <SelectItem value="repair-in-progress">Repair In Progress</SelectItem>
+                    <SelectItem value="repair-completed">Repair Completed</SelectItem>
+                    <SelectItem value="stress-test">Stress Test</SelectItem>
+                    <SelectItem value="ready-for-delivery">Ready for Delivery</SelectItem>
+                    <SelectItem value="delivered">Delivered</SelectItem>
+                    <SelectItem value="completed">Completed</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              <div>
+                <Label className="text-xs mb-1 block">Priority</Label>
+                <Select 
+                  value={priorityFilter}
+                  onValueChange={(value) => setPriorityFilter(value)}
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Filter by priority" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Priorities</SelectItem>
+                    <SelectItem value="high">High</SelectItem>
+                    <SelectItem value="medium">Medium</SelectItem>
+                    <SelectItem value="low">Low</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              <div>
+                <Label className="text-xs mb-1 block">Technician</Label>
+                <Select 
+                  value={technicianFilter}
+                  onValueChange={(value) => setTechnicianFilter(value)}
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Filter by technician" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Technicians</SelectItem>
+                    {technicians.map(tech => (
+                      <SelectItem key={tech} value={tech}>{tech}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              <div>
+                <Label className="text-xs mb-1 block">Due Date</Label>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant={"outline"}
+                      className={cn(
+                        "w-full justify-start text-left font-normal",
+                        !dateFilter && "text-muted-foreground"
+                      )}
+                    >
+                      {dateFilter ? (
+                        format(dateFilter, "PPP")
+                      ) : (
+                        <span>Select due date</span>
+                      )}
+                      <CalendarDays className="ml-auto h-4 w-4 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <CalendarComponent
+                      mode="single"
+                      selected={dateFilter}
+                      onSelect={setDateFilter}
+                      initialFocus
+                      className="p-3 pointer-events-auto"
+                    />
+                    {dateFilter && (
+                      <div className="p-3 border-t border-border flex justify-end">
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          onClick={() => setDateFilter(undefined)}
+                        >
+                          Clear
+                        </Button>
+                      </div>
+                    )}
+                  </PopoverContent>
+                </Popover>
+              </div>
+              
+              <div className="md:col-span-4 flex justify-end mt-2">
+                <Button variant="outline" size="sm" onClick={clearFilters}>
+                  Clear All Filters
+                </Button>
+              </div>
+            </div>
+          )}
         </CardHeader>
         <CardContent>
           <div className="rounded-md border">
