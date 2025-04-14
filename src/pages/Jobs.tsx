@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { PlusCircle, Search, Filter, MoreHorizontal, Clipboard, Bell, FileText, Tag } from 'lucide-react';
+import { PlusCircle, Search, Filter, MoreHorizontal, Clipboard, Bell, FileText, Tag, Calendar, MapPin, Flag } from 'lucide-react';
 import { 
   DropdownMenu,
   DropdownMenuContent,
@@ -30,9 +30,17 @@ import {
   DialogFooter,
   DialogDescription
 } from "@/components/ui/dialog";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { Calendar as CalendarComponent } from "@/components/ui/calendar";
+import { format } from "date-fns";
 import { Label } from "@/components/ui/label";
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useLocalStorage } from '@/hooks/use-local-storage';
+import { cn } from "@/lib/utils";
 
 const initialJobs = [
   {
@@ -127,11 +135,15 @@ const Jobs = () => {
     issue: '',
     serialNumber: '',
     customerEmail: '',
-    phoneNumber: ''
+    phoneNumber: '',
+    address: '',
+    priority: 'medium',
+    dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
   });
   const [activeJob, setActiveJob] = useState<string | null>(null);
   const [jobDetailsDialogOpen, setJobDetailsDialogOpen] = useState(false);
   const [jobToView, setJobToView] = useState<typeof initialJobs[0] | null>(null);
+  const [localCustomers, setLocalCustomers] = useLocalStorage('repair-app-customers', []);
   const dialogRef = useRef<HTMLDivElement>(null);
 
   const safeCloseJobDetailsDialog = useCallback(() => {
@@ -182,7 +194,10 @@ const Jobs = () => {
       issue: '',
       serialNumber: '',
       customerEmail: '',
-      phoneNumber: ''
+      phoneNumber: '',
+      address: '',
+      priority: 'medium',
+      dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
     });
     setIsNewJobDialogOpen(true);
   };
@@ -202,14 +217,46 @@ const Jobs = () => {
       ...newJob,
       id: jobId,
       status: 'received',
-      priority: 'medium',
       createdAt: new Date().toISOString().split('T')[0],
-      dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+      dueDate: newJob.dueDate instanceof Date 
+        ? newJob.dueDate.toISOString().split('T')[0] 
+        : newJob.dueDate,
       assignedTo: 'Unassigned',
       hasNotification: false
     };
     
     setLocalJobs([createdJob, ...localJobs]);
+    
+    const existingCustomerIndex = localCustomers.findIndex(
+      c => c.email === newJob.customerEmail
+    );
+    
+    if (existingCustomerIndex >= 0) {
+      const updatedCustomers = [...localCustomers];
+      updatedCustomers[existingCustomerIndex] = {
+        ...updatedCustomers[existingCustomerIndex],
+        name: newJob.customer,
+        email: newJob.customerEmail,
+        phone: newJob.phoneNumber || updatedCustomers[existingCustomerIndex].phone,
+        location: newJob.address || updatedCustomers[existingCustomerIndex].location,
+        jobsCompleted: updatedCustomers[existingCustomerIndex].jobsCompleted,
+        totalSpent: updatedCustomers[existingCustomerIndex].totalSpent,
+        lastJob: new Date().toISOString().split('T')[0]
+      };
+      setLocalCustomers(updatedCustomers);
+    } else {
+      const newCustomer = {
+        id: localCustomers.length > 0 ? Math.max(...localCustomers.map(c => c.id)) + 1 : 1,
+        name: newJob.customer,
+        email: newJob.customerEmail,
+        phone: newJob.phoneNumber || '',
+        location: newJob.address || '',
+        jobsCompleted: 0,
+        totalSpent: 0,
+        lastJob: new Date().toISOString().split('T')[0]
+      };
+      setLocalCustomers([newCustomer, ...localCustomers]);
+    }
     
     setNewJob({
       customer: '',
@@ -217,7 +264,10 @@ const Jobs = () => {
       issue: '',
       serialNumber: '',
       customerEmail: '',
-      phoneNumber: ''
+      phoneNumber: '',
+      address: '',
+      priority: 'medium',
+      dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
     });
     
     setTimeout(() => {
@@ -571,7 +621,10 @@ const Jobs = () => {
               issue: '',
               serialNumber: '',
               customerEmail: '',
-              phoneNumber: ''
+              phoneNumber: '',
+              address: '',
+              priority: 'medium',
+              dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
             });
           }, 10);
         }
@@ -580,13 +633,13 @@ const Jobs = () => {
           <DialogHeader>
             <DialogTitle>Create New Repair Job</DialogTitle>
             <DialogDescription>
-              Enter the details for the new repair job. All fields are required.
+              Enter the details for the new repair job. All fields marked with * are required.
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="customer" className="text-right">
-                Customer
+                Customer *
               </Label>
               <Input
                 id="customer"
@@ -597,7 +650,7 @@ const Jobs = () => {
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="email" className="text-right">
-                Email
+                Email *
               </Label>
               <Input
                 id="email"
@@ -619,8 +672,20 @@ const Jobs = () => {
               />
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="address" className="text-right">
+                <MapPin className="h-4 w-4 inline mr-1" />
+                Address
+              </Label>
+              <Input
+                id="address"
+                value={newJob.address}
+                onChange={(e) => setNewJob({ ...newJob, address: e.target.value })}
+                className="col-span-3"
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="device" className="text-right">
-                Device
+                Device *
               </Label>
               <Input
                 id="device"
@@ -642,7 +707,7 @@ const Jobs = () => {
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="issue" className="text-right">
-                Issue
+                Issue *
               </Label>
               <Input
                 id="issue"
@@ -650,6 +715,60 @@ const Jobs = () => {
                 onChange={(e) => setNewJob({ ...newJob, issue: e.target.value })}
                 className="col-span-3"
               />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="priority" className="text-right">
+                <Flag className="h-4 w-4 inline mr-1" />
+                Priority
+              </Label>
+              <Select 
+                value={newJob.priority} 
+                onValueChange={(value) => setNewJob({ ...newJob, priority: value })}
+              >
+                <SelectTrigger className="col-span-3">
+                  <SelectValue placeholder="Select priority" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="high">High</SelectItem>
+                  <SelectItem value="medium">Medium</SelectItem>
+                  <SelectItem value="low">Low</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="dueDate" className="text-right">
+                <Calendar className="h-4 w-4 inline mr-1" />
+                Due Date
+              </Label>
+              <div className="col-span-3">
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant={"outline"}
+                      className={cn(
+                        "w-full justify-start text-left font-normal",
+                        !newJob.dueDate && "text-muted-foreground"
+                      )}
+                    >
+                      {newJob.dueDate instanceof Date ? (
+                        format(newJob.dueDate, "PPP")
+                      ) : (
+                        <span>Pick a date</span>
+                      )}
+                      <Calendar className="ml-auto h-4 w-4 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <CalendarComponent
+                      mode="single"
+                      selected={newJob.dueDate instanceof Date ? newJob.dueDate : undefined}
+                      onSelect={(date) => setNewJob({ ...newJob, dueDate: date || new Date() })}
+                      initialFocus
+                      className="p-3 pointer-events-auto"
+                    />
+                  </PopoverContent>
+                </Popover>
+              </div>
             </div>
           </div>
           <DialogFooter>
@@ -661,7 +780,10 @@ const Jobs = () => {
                 issue: '',
                 serialNumber: '',
                 customerEmail: '',
-                phoneNumber: ''
+                phoneNumber: '',
+                address: '',
+                priority: 'medium',
+                dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
               });
             }}>Cancel</Button>
             <Button onClick={handleCreateJob}>Create Job</Button>

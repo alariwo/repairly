@@ -41,7 +41,7 @@ const DialogContent = React.forwardRef<
         className
       )}
       onEscapeKeyDown={(e) => {
-        // Prevent event bubbling to avoid multiple handlers
+        // Prevent event bubbling to avoid multiple handlers firing
         e.stopPropagation();
       }}
       onPointerDownOutside={(e) => {
