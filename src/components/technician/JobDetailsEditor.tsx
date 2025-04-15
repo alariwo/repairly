@@ -1,6 +1,5 @@
-
-import React from 'react';
-import { Save, Upload, Image, UserRound, Mail } from 'lucide-react';
+import React, { useState } from 'react';
+import { Save, Upload, Image, UserRound, Mail, Package } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -12,6 +11,8 @@ import {
 } from "@/components/ui/select";
 import { useToast } from '@/hooks/use-toast';
 import { sendEmailNotification } from '@/utils/notifications';
+import { PartsSelector } from '@/components/parts/PartsSelector';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 
 type Job = {
   id: string;
@@ -48,6 +49,7 @@ export const JobDetailsEditor = ({
   const [jobNotes, setJobNotes] = React.useState(job.notes);
   const [jobStatus, setJobStatus] = React.useState(job.status);
   const [isNotifying, setIsNotifying] = React.useState(false);
+  const [isPartsDialogOpen, setIsPartsDialogOpen] = useState(false);
 
   const handleSave = () => {
     onUpdate({ 
@@ -186,6 +188,14 @@ export const JobDetailsEditor = ({
           >
             <Mail className="mr-2 h-4 w-4" /> Notify Customer
           </Button>
+          
+          <Button 
+            variant="outline"
+            className="gap-1"
+            onClick={() => setIsPartsDialogOpen(true)}
+          >
+            <Package className="h-4 w-4" /> Add Parts
+          </Button>
         </div>
       </div>
       
@@ -256,5 +266,26 @@ export const JobDetailsEditor = ({
         </div>
       </div>
     </div>
+
+    <Dialog open={isPartsDialogOpen} onOpenChange={setIsPartsDialogOpen}>
+      <DialogContent className="sm:max-w-[700px]">
+        <DialogHeader>
+          <DialogTitle>Add Parts to Job</DialogTitle>
+        </DialogHeader>
+        
+        <PartsSelector 
+          jobId={job.id} 
+          customerName={job.customer}
+          technicianId={/* get technician ID */}
+          technicianName={/* get technician name */}
+        />
+        
+        <DialogFooter>
+          <Button variant="outline" onClick={() => setIsPartsDialogOpen(false)}>
+            Close
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 };

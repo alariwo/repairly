@@ -1,26 +1,19 @@
 
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+import { Plus } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { Package, Plus, Search, X } from 'lucide-react';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from '@/components/ui/dialog';
 import {
   Table,
   TableBody,
-  TableCell,
   TableHead,
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
 import { useLocalStorage } from '@/hooks/use-local-storage';
+import { PartListItem } from './PartListItem';
+import { EmptyPartsList } from './EmptyPartsList';
+import { PartsInventoryDialog } from './PartsInventoryDialog';
 
 export interface InventoryItem {
   id: string;
@@ -70,7 +63,6 @@ export const PartsSelector = ({
   const [partUsages, setPartUsages] = useLocalStorage<PartUsage[]>('part-usages', []);
   const [selectedParts, setSelectedParts] = useState<PartsUsed[]>(initialParts);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [searchTerm, setSearchTerm] = useState('');
   const { toast } = useToast();
 
   useEffect(() => {
@@ -155,11 +147,6 @@ export const PartsSelector = ({
     });
   };
 
-  const filteredInventory = inventory.filter(item => 
-    item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    item.category.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
@@ -190,107 +177,27 @@ export const PartsSelector = ({
                 if (!inventoryItem) return null;
                 
                 return (
-                  <TableRow key={part.partId}>
-                    <TableCell>{inventoryItem.name}</TableCell>
-                    <TableCell>{part.quantity}</TableCell>
-                    <TableCell>${inventoryItem.price.toFixed(2)}</TableCell>
-                    <TableCell className="text-right">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => removePart(part.partId)}
-                      >
-                        <X size={16} className="text-red-500" />
-                      </Button>
-                    </TableCell>
-                  </TableRow>
+                  <PartListItem
+                    key={part.partId}
+                    inventoryItem={inventoryItem}
+                    quantity={part.quantity}
+                    onRemove={removePart}
+                  />
                 );
               })}
             </TableBody>
           </Table>
         </div>
       ) : (
-        <div className="border rounded-md p-8 text-center text-gray-500">
-          <Package className="h-12 w-12 mx-auto mb-4 text-gray-400" />
-          <p>No parts added to this job yet</p>
-          <Button
-            variant="outline"
-            size="sm"
-            className="mt-4"
-            onClick={() => setIsDialogOpen(true)}
-          >
-            <Plus size={16} className="mr-2" /> Add Parts
-          </Button>
-        </div>
+        <EmptyPartsList onAddParts={() => setIsDialogOpen(true)} />
       )}
 
-      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="max-w-3xl">
-          <DialogHeader>
-            <DialogTitle>Select Parts from Inventory</DialogTitle>
-          </DialogHeader>
-          
-          <div className="relative mb-4">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-            <Input
-              placeholder="Search parts by name or category..."
-              className="pl-10"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-          </div>
-          
-          <div className="border rounded-md overflow-hidden max-h-96 overflow-y-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Category</TableHead>
-                  <TableHead>In Stock</TableHead>
-                  <TableHead>Price</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredInventory.length > 0 ? (
-                  filteredInventory.map((item) => (
-                    <TableRow key={item.id}>
-                      <TableCell className="font-medium">{item.name}</TableCell>
-                      <TableCell>{item.category}</TableCell>
-                      <TableCell className={item.quantity < 5 ? "text-red-500" : ""}>
-                        {item.quantity}
-                      </TableCell>
-                      <TableCell>${item.price.toFixed(2)}</TableCell>
-                      <TableCell className="text-right">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => addPart(item)}
-                          disabled={item.quantity < 1}
-                        >
-                          {item.quantity < 1 ? "Out of Stock" : "Add"}
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))
-                ) : (
-                  <TableRow>
-                    <TableCell colSpan={5} className="h-24 text-center">
-                      No parts found matching your search.
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
-          </div>
-          
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
-              Close
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <PartsInventoryDialog
+        isOpen={isDialogOpen}
+        onOpenChange={setIsDialogOpen}
+        onAddPart={addPart}
+        inventory={inventory}
+      />
     </div>
   );
 };

@@ -42,6 +42,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { useLocalStorage } from '@/hooks/use-local-storage';
 import { cn } from "@/lib/utils";
 import { Textarea } from '@/components/ui/textarea';
+import { PartsSelector } from '@/components/jobs/PartsSelector';
 
 const initialJobs = [
   {
@@ -157,6 +158,8 @@ const Jobs = () => {
   const [isAssignDialogOpen, setIsAssignDialogOpen] = useState(false);
   const [jobToAssign, setJobToAssign] = useState<null | typeof initialJobs[0]>(null);
   const [selectedTechnician, setSelectedTechnician] = useState('');
+  const [isPartsDialogOpen, setIsPartsDialogOpen] = useState(false);
+  const [jobForParts, setJobForParts] = useState<typeof initialJobs[0] | null>(null);
 
   const technicians = React.useMemo(() => {
     const techSet = new Set(localJobs.map(job => job.assignedTo));
@@ -519,10 +522,8 @@ const Jobs = () => {
         openAssignDialog(job);
         break;
       case 'add-parts':
-        toast({
-          title: "Add Parts",
-          description: "Parts inventory system would open here",
-        });
+        setJobForParts(job);
+        setIsPartsDialogOpen(true);
         break;
       case 'create-invoice':
         toast({
@@ -1227,6 +1228,32 @@ const Jobs = () => {
               </div>
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isPartsDialogOpen} onOpenChange={setIsPartsDialogOpen}>
+        <DialogContent className="sm:max-w-[700px]">
+          <DialogHeader>
+            <DialogTitle>Add Parts to Job</DialogTitle>
+            <DialogDescription>
+              {jobForParts ? `Adding parts to job ${jobForParts.id} for ${jobForParts.customer}` : ''}
+            </DialogDescription>
+          </DialogHeader>
+          
+          {jobForParts && (
+            <PartsSelector 
+              jobId={jobForParts.id} 
+              customerName={jobForParts.customer}
+              technicianId=""
+              technicianName=""
+            />
+          )}
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsPartsDialogOpen(false)}>
+              Close
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
