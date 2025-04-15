@@ -2,11 +2,24 @@
 import React from 'react';
 import { cn } from '@/lib/utils';
 import { NavLink } from 'react-router-dom';
-import { Home, Users, Clipboard, Package, FileText, Mail, Settings, LogOut, Wrench } from 'lucide-react';
+import { 
+  Home, 
+  Users, 
+  Clipboard, 
+  Package, 
+  FileText, 
+  Mail, 
+  Settings, 
+  LogOut, 
+  Wrench, 
+  DollarSign, 
+  Shield, 
+  UserCog
+} from 'lucide-react';
 
 interface SidebarProps {
   className?: string;
-  userRole?: 'admin' | 'technician';
+  userRole?: 'super-admin' | 'admin' | 'technician';
 }
 
 const Sidebar = ({ className, userRole = 'admin' }: SidebarProps) => {
@@ -19,7 +32,123 @@ const Sidebar = ({ className, userRole = 'admin' }: SidebarProps) => {
       </div>
       
       <nav className="flex-1 px-4 space-y-1">
-        {userRole === 'admin' ? (
+        {userRole === 'super-admin' ? (
+          // Super Admin Navigation
+          <>
+            <NavLink 
+              to="/" 
+              className={({ isActive }) => 
+                cn("flex items-center px-4 py-3 rounded-md transition-colors", 
+                  isActive 
+                    ? "bg-white text-repairam font-medium" 
+                    : "hover:bg-repairam-dark text-white"
+                )
+              }
+              end
+            >
+              <Home className="w-5 h-5 mr-3" />
+              Dashboard
+            </NavLink>
+            
+            <NavLink 
+              to="/customers" 
+              className={({ isActive }) => 
+                cn("flex items-center px-4 py-3 rounded-md transition-colors", 
+                  isActive 
+                    ? "bg-white text-repairam font-medium" 
+                    : "hover:bg-repairam-dark text-white"
+                )
+              }
+            >
+              <Users className="w-5 h-5 mr-3" />
+              Customers
+            </NavLink>
+            
+            <NavLink 
+              to="/jobs" 
+              className={({ isActive }) => 
+                cn("flex items-center px-4 py-3 rounded-md transition-colors", 
+                  isActive 
+                    ? "bg-white text-repairam font-medium" 
+                    : "hover:bg-repairam-dark text-white"
+                )
+              }
+            >
+              <Clipboard className="w-5 h-5 mr-3" />
+              Jobs
+            </NavLink>
+            
+            <NavLink 
+              to="/inventory" 
+              className={({ isActive }) => 
+                cn("flex items-center px-4 py-3 rounded-md transition-colors", 
+                  isActive 
+                    ? "bg-white text-repairam font-medium" 
+                    : "hover:bg-repairam-dark text-white"
+                )
+              }
+            >
+              <Package className="w-5 h-5 mr-3" />
+              Inventory
+            </NavLink>
+            
+            <NavLink 
+              to="/invoices" 
+              className={({ isActive }) => 
+                cn("flex items-center px-4 py-3 rounded-md transition-colors", 
+                  isActive 
+                    ? "bg-white text-repairam font-medium" 
+                    : "hover:bg-repairam-dark text-white"
+                )
+              }
+            >
+              <FileText className="w-5 h-5 mr-3" />
+              Invoices
+            </NavLink>
+            
+            <NavLink 
+              to="/messages" 
+              className={({ isActive }) => 
+                cn("flex items-center px-4 py-3 rounded-md transition-colors", 
+                  isActive 
+                    ? "bg-white text-repairam font-medium" 
+                    : "hover:bg-repairam-dark text-white"
+                )
+              }
+            >
+              <Mail className="w-5 h-5 mr-3" />
+              Messages
+            </NavLink>
+            
+            <NavLink 
+              to="/accounting" 
+              className={({ isActive }) => 
+                cn("flex items-center px-4 py-3 rounded-md transition-colors", 
+                  isActive 
+                    ? "bg-white text-repairam font-medium" 
+                    : "hover:bg-repairam-dark text-white"
+                )
+              }
+            >
+              <DollarSign className="w-5 h-5 mr-3" />
+              Accounting
+            </NavLink>
+            
+            <NavLink 
+              to="/user-management" 
+              className={({ isActive }) => 
+                cn("flex items-center px-4 py-3 rounded-md transition-colors", 
+                  isActive 
+                    ? "bg-white text-repairam font-medium" 
+                    : "hover:bg-repairam-dark text-white"
+                )
+              }
+            >
+              <UserCog className="w-5 h-5 mr-3" />
+              User Management
+            </NavLink>
+          </>
+        ) : userRole === 'admin' ? (
           // Admin Navigation
           <>
             <NavLink 
@@ -106,6 +235,20 @@ const Sidebar = ({ className, userRole = 'admin' }: SidebarProps) => {
               <Mail className="w-5 h-5 mr-3" />
               Messages
             </NavLink>
+            
+            <NavLink 
+              to="/user-management" 
+              className={({ isActive }) => 
+                cn("flex items-center px-4 py-3 rounded-md transition-colors", 
+                  isActive 
+                    ? "bg-white text-repairam font-medium" 
+                    : "hover:bg-repairam-dark text-white"
+                )
+              }
+            >
+              <UserCog className="w-5 h-5 mr-3" />
+              User Management
+            </NavLink>
           </>
         ) : (
           // Technician Navigation
@@ -122,6 +265,20 @@ const Sidebar = ({ className, userRole = 'admin' }: SidebarProps) => {
             >
               <Wrench className="w-5 h-5 mr-3" />
               My Repairs
+            </NavLink>
+            
+            <NavLink 
+              to="/technician-analytics" 
+              className={({ isActive }) => 
+                cn("flex items-center px-4 py-3 rounded-md transition-colors", 
+                  isActive 
+                    ? "bg-white text-repairam font-medium" 
+                    : "hover:bg-repairam-dark text-white"
+                )
+              }
+            >
+              <Clipboard className="w-5 h-5 mr-3" />
+              Repair Logs
             </NavLink>
           </>
         )}

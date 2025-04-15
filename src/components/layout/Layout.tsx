@@ -5,7 +5,7 @@ import Header from './Header';
 
 interface LayoutProps {
   children: React.ReactNode;
-  userRole?: 'admin' | 'technician';
+  userRole?: 'super-admin' | 'admin' | 'technician';
 }
 
 const Layout = ({ children, userRole = 'admin' }: LayoutProps) => {
@@ -27,8 +27,9 @@ const Layout = ({ children, userRole = 'admin' }: LayoutProps) => {
             <select 
               className="text-xs border p-1 rounded bg-white"
               value={role}
-              onChange={(e) => setRole(e.target.value as 'admin' | 'technician')}
+              onChange={(e) => setRole(e.target.value as 'super-admin' | 'admin' | 'technician')}
             >
+              <option value="super-admin">Super Admin View</option>
               <option value="admin">Admin View</option>
               <option value="technician">Technician View</option>
             </select>
