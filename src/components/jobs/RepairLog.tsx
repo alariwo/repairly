@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { 
   Card, 
@@ -120,7 +119,7 @@ export const RepairLog = ({ jobId, jobTitle, isAdmin = false }: RepairLogProps) 
   });
   
   const [reassignment, setReassignment] = useState({
-    technicianRole: 'internal',
+    technicianRole: 'internal' as 'internal' | 'external',
     technician: '',
     notes: '',
     cost: 0
