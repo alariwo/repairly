@@ -1,29 +1,12 @@
+
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
-import { ClipboardCheck, Upload, MessageSquare, Image, Save, Filter, Search, UserRound, RefreshCw } from 'lucide-react';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { useToast } from '@/components/ui/use-toast';
-import { Badge } from '@/components/ui/badge';
-import { JobPrintables } from '@/components/jobs/JobPrintables';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { useToast } from '@/hooks/use-toast';
+import { JobList } from '@/components/technician/JobList';
+import { JobDetailsEditor } from '@/components/technician/JobDetailsEditor';
+import { JobReassignmentDialog } from '@/components/technician/JobReassignmentDialog';
 
+// Mock data
 const currentTechnician = {
   id: 'tech-001',
   name: 'Mike Technician',
@@ -83,36 +66,11 @@ const otherTechnicians = [
 const TechnicianDashboard = () => {
   const { toast } = useToast();
   const [jobs, setJobs] = useState(technicianJobs);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState('all');
   const [selectedJob, setSelectedJob] = useState<null | typeof technicianJobs[0]>(null);
-  const [jobNotes, setJobNotes] = useState('');
-  const [jobStatus, setJobStatus] = useState('');
   const [isReassignDialogOpen, setIsReassignDialogOpen] = useState(false);
-  const [reassignment, setReassignment] = useState({
-    technicianRole: 'internal' as 'internal' | 'external',
-    technician: '',
-    notes: '',
-    cost: 0
-  });
-
-  const filteredJobs = jobs.filter(job => {
-    if (statusFilter !== 'all' && job.status !== statusFilter) {
-      return false;
-    }
-    
-    return (
-      job.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      job.deviceType.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      job.issue.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (job.serialNumber && job.serialNumber.toLowerCase().includes(searchTerm.toLowerCase()))
-    );
-  });
 
   const handleSelectJob = (job: typeof technicianJobs[0]) => {
     setSelectedJob(job);
-    setJobNotes(job.notes);
-    setJobStatus(job.status);
     
     toast({
       title: "Job Selected",
@@ -120,75 +78,44 @@ const TechnicianDashboard = () => {
     });
   };
 
-  const handleJobUpdate = () => {
+  const handleJobUpdate = (updatedJobData: Partial<typeof technicianJobs[0]>) => {
     if (!selectedJob) return;
     
     const updatedJobs = jobs.map(job => 
       job.id === selectedJob.id 
-        ? { ...job, notes: jobNotes, status: jobStatus } 
+        ? { ...job, ...updatedJobData } 
         : job
     );
+    
     setJobs(updatedJobs);
     
-    if (jobStatus === 'repair-completed' || jobStatus === 'ready-for-delivery') {
+    // Find the updated job to set as selected
+    const updatedJob = updatedJobs.find(job => job.id === selectedJob.id);
+    if (updatedJob) {
+      setSelectedJob(updatedJob);
+    }
+    
+    const newStatus = updatedJobData.status;
+    if (newStatus === 'repair-completed' || newStatus === 'ready-for-delivery') {
       toast({
         title: "Admin Notification Sent",
         description: `Admin has been notified about the status change for job ${selectedJob.id}.`,
       });
     }
     
-    setSelectedJob(null);
     toast({
       title: "Job Updated",
       description: `Job ${selectedJob.id} has been updated successfully.`,
     });
   };
 
-  const handleFileUpload = (type: 'before' | 'after') => {
-    const input = document.createElement('input');
-    input.type = 'file';
-    input.accept = 'image/*';
-    input.onchange = (event) => {
-      const file = (event.target as HTMLInputElement).files?.[0];
-      if (file) {
-        const reader = new FileReader();
-        reader.onload = (e) => {
-          if (!selectedJob) return;
-          
-          const updatedJobs = jobs.map(job => {
-            if (job.id === selectedJob.id) {
-              const updatedJob = { ...job };
-              if (type === 'before') {
-                updatedJob.beforeImages = [...updatedJob.beforeImages, e.target?.result as string];
-              } else {
-                updatedJob.afterImages = [...updatedJob.afterImages, e.target?.result as string];
-              }
-              return updatedJob;
-            }
-            return job;
-          });
-          
-          setJobs(updatedJobs);
-          setSelectedJob(updatedJobs.find(j => j.id === selectedJob.id) || null);
-          
-          toast({
-            title: "Image Uploaded",
-            description: `${type} image uploaded successfully for job ${selectedJob.id}`,
-          });
-        };
-        reader.readAsDataURL(file);
-      }
-    };
-    input.click();
-  };
-
-  const handleReassignJob = () => {
+  const handleJobReassign = (reassignmentData: any) => {
     if (!selectedJob) return;
     
     toast({
       title: "Job Reassigned",
-      description: reassignment.technicianRole === 'internal' 
-        ? `Job ${selectedJob.id} has been reassigned to ${reassignment.technician}.`
+      description: reassignmentData.technicianRole === 'internal' 
+        ? `Job ${selectedJob.id} has been reassigned to ${reassignmentData.technician}.`
         : `Job ${selectedJob.id} has been sent to external provider with notes.`,
     });
     
@@ -196,44 +123,6 @@ const TechnicianDashboard = () => {
     setJobs(updatedJobs);
     setSelectedJob(null);
     setIsReassignDialogOpen(false);
-    
-    setReassignment({
-      technicianRole: 'internal' as 'internal' | 'external',
-      technician: '',
-      notes: '',
-      cost: 0
-    });
-  };
-
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case 'diagnosis':
-        return <Badge variant="outline" className="bg-orange-100 text-orange-800 border-orange-200">Diagnosis</Badge>;
-      case 'repair-in-progress':
-        return <Badge variant="outline" className="bg-blue-100 text-blue-800 border-blue-200">Repair In Progress</Badge>;
-      case 'repair-completed':
-        return <Badge variant="outline" className="bg-green-100 text-green-800 border-green-200">Repair Completed</Badge>;
-      case 'stress-test':
-        return <Badge variant="outline" className="bg-indigo-100 text-indigo-800 border-indigo-200">Stress Test</Badge>;
-      case 'ready-for-delivery':
-        return <Badge variant="outline" className="bg-teal-100 text-teal-800 border-teal-200">Ready for Delivery</Badge>;
-      default:
-        return <Badge variant="outline" className="bg-gray-100 text-gray-800 border-gray-200">{status.replace('-', ' ')}</Badge>;
-    }
-  };
-
-  const transformJobForPrintables = (job: typeof technicianJobs[0]) => {
-    return {
-      id: job.id,
-      customer: job.customer,
-      device: job.deviceType,
-      issue: job.issue,
-      status: job.status,
-      createdAt: job.createdAt,
-      assignedTo: currentTechnician.name,
-      serialNumber: job.serialNumber,
-      phoneNumber: job.phoneNumber
-    };
   };
 
   return (
@@ -247,87 +136,14 @@ const TechnicianDashboard = () => {
 
       <Card>
         <CardHeader className="pb-3">
-          <div className="flex justify-between items-center">
-            <CardTitle>My Assigned Jobs</CardTitle>
-            <div className="flex items-center space-x-2">
-              <Select 
-                defaultValue="all"
-                onValueChange={(value) => setStatusFilter(value)}
-              >
-                <SelectTrigger className="w-[180px]">
-                  <SelectValue placeholder="Filter by status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Statuses</SelectItem>
-                  <SelectItem value="diagnosis">Diagnosis</SelectItem>
-                  <SelectItem value="repair-in-progress">Repair In Progress</SelectItem>
-                  <SelectItem value="repair-completed">Repair Completed</SelectItem>
-                  <SelectItem value="stress-test">Stress Test</SelectItem>
-                  <SelectItem value="ready-for-delivery">Ready for Delivery</SelectItem>
-                </SelectContent>
-              </Select>
-              
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 h-4 w-4" />
-                <Input
-                  placeholder="Search jobs, serial numbers..."
-                  className="pl-10 w-[250px]"
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                />
-              </div>
-            </div>
-          </div>
+          <CardTitle>My Assigned Jobs</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="rounded-md border">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Job ID</TableHead>
-                  <TableHead>Device/Issue</TableHead>
-                  <TableHead>Serial Number</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Due Date</TableHead>
-                  <TableHead>Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredJobs.map((job) => (
-                  <TableRow key={job.id} className={selectedJob?.id === job.id ? "bg-gray-50" : ""}>
-                    <TableCell className="font-medium">{job.id}</TableCell>
-                    <TableCell>
-                      <div>{job.deviceType}</div>
-                      <div className="text-gray-500">{job.issue}</div>
-                    </TableCell>
-                    <TableCell className="font-mono text-xs">
-                      {job.serialNumber || 'N/A'}
-                    </TableCell>
-                    <TableCell>{getStatusBadge(job.status)}</TableCell>
-                    <TableCell>{job.dueDate}</TableCell>
-                    <TableCell>
-                      <div className="flex items-center space-x-2">
-                        <Button 
-                          variant="ghost" 
-                          size="sm" 
-                          onClick={() => handleSelectJob(job)}
-                        >
-                          Select
-                        </Button>
-                        <JobPrintables job={transformJobForPrintables(job)} />
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-            
-            {filteredJobs.length === 0 && (
-              <div className="py-10 text-center text-gray-500">
-                <p>No jobs found matching your search criteria.</p>
-              </div>
-            )}
-          </div>
+          <JobList 
+            jobs={jobs} 
+            onSelectJob={handleSelectJob} 
+            selectedJobId={selectedJob?.id || null} 
+          />
         </CardContent>
       </Card>
 
@@ -337,209 +153,23 @@ const TechnicianDashboard = () => {
             <CardTitle>Update Job: {selectedJob.id}</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="space-y-4">
-                <div>
-                  <label className="text-sm font-medium">Device</label>
-                  <div className="mt-1">{selectedJob.deviceType}</div>
-                </div>
-                <div>
-                  <label className="text-sm font-medium">Serial Number</label>
-                  <div className="mt-1 font-mono text-sm">{selectedJob.serialNumber || 'Not provided'}</div>
-                </div>
-                <div>
-                  <label className="text-sm font-medium">Issue</label>
-                  <div className="mt-1">{selectedJob.issue}</div>
-                </div>
-                <div>
-                  <label className="text-sm font-medium">Status</label>
-                  <Select 
-                    value={jobStatus} 
-                    onValueChange={setJobStatus}
-                  >
-                    <SelectTrigger className="w-full mt-1">
-                      <SelectValue placeholder="Update status" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="diagnosis">Diagnosis</SelectItem>
-                      <SelectItem value="repair-in-progress">Repair In Progress</SelectItem>
-                      <SelectItem value="repair-completed">Repair Completed</SelectItem>
-                      <SelectItem value="stress-test">Stress Test</SelectItem>
-                      <SelectItem value="ready-for-delivery">Ready for Delivery</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <label className="text-sm font-medium">Notes</label>
-                  <Textarea 
-                    placeholder="Describe the work done..." 
-                    className="mt-1"
-                    value={jobNotes}
-                    onChange={(e) => setJobNotes(e.target.value)}
-                    rows={4}
-                  />
-                </div>
-                <div className="pt-3">
-                  <Button 
-                    variant="outline"
-                    className="w-full"
-                    onClick={() => setIsReassignDialogOpen(true)}
-                  >
-                    <UserRound className="mr-2 h-4 w-4" /> Reassign Job
-                  </Button>
-                </div>
-              </div>
-              
-              <div className="space-y-4">
-                <div>
-                  <label className="text-sm font-medium">Images</label>
-                  <div className="mt-2 grid grid-cols-2 gap-4">
-                    <div className="border rounded-md p-4">
-                      <div className="flex justify-between items-center mb-2">
-                        <span className="text-sm font-medium">Before</span>
-                        <Button 
-                          variant="outline" 
-                          size="sm"
-                          onClick={() => handleFileUpload('before')}
-                        >
-                          <Upload className="h-4 w-4 mr-1" /> Upload
-                        </Button>
-                      </div>
-                      <div className="h-32 bg-gray-100 rounded-md flex items-center justify-center">
-                        {selectedJob.beforeImages.length > 0 ? (
-                          <div className="text-sm">
-                            {selectedJob.beforeImages.length} image(s) uploaded
-                          </div>
-                        ) : (
-                          <Image className="h-8 w-8 text-gray-400" />
-                        )}
-                      </div>
-                    </div>
-                    
-                    <div className="border rounded-md p-4">
-                      <div className="flex justify-between items-center mb-2">
-                        <span className="text-sm font-medium">After</span>
-                        <Button 
-                          variant="outline" 
-                          size="sm"
-                          onClick={() => handleFileUpload('after')}
-                        >
-                          <Upload className="h-4 w-4 mr-1" /> Upload
-                        </Button>
-                      </div>
-                      <div className="h-32 bg-gray-100 rounded-md flex items-center justify-center">
-                        {selectedJob.afterImages.length > 0 ? (
-                          <div className="text-sm">
-                            {selectedJob.afterImages.length} image(s) uploaded
-                          </div>
-                        ) : (
-                          <Image className="h-8 w-8 text-gray-400" />
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                
-                <div className="pt-6">
-                  <Button 
-                    className="w-full bg-repairam hover:bg-repairam-dark"
-                    onClick={handleJobUpdate}
-                  >
-                    <Save className="mr-2 h-4 w-4" /> Save Changes
-                  </Button>
-                  <Button 
-                    variant="outline" 
-                    className="w-full mt-2"
-                    onClick={() => setSelectedJob(null)}
-                  >
-                    Cancel
-                  </Button>
-                </div>
-              </div>
-            </div>
+            <JobDetailsEditor 
+              job={selectedJob}
+              onUpdate={handleJobUpdate}
+              onCancel={() => setSelectedJob(null)}
+              onReassign={() => setIsReassignDialogOpen(true)}
+            />
           </CardContent>
         </Card>
       )}
 
-      <Dialog open={isReassignDialogOpen} onOpenChange={setIsReassignDialogOpen}>
-        <DialogContent className="sm:max-w-[425px]">
-          <DialogHeader>
-            <DialogTitle>Reassign Job {selectedJob?.id}</DialogTitle>
-          </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Reassign To</label>
-              <Select
-                value={reassignment.technicianRole}
-                onValueChange={(value: 'internal' | 'external') => 
-                  setReassignment(prev => ({ ...prev, technicianRole: value }))}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select option" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="internal">Internal Technician</SelectItem>
-                  <SelectItem value="external">External Provider</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            {reassignment.technicianRole === 'internal' ? (
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Select Technician</label>
-                <Select
-                  value={reassignment.technician}
-                  onValueChange={(value) => setReassignment(prev => ({ ...prev, technician: value }))}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Choose technician" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {otherTechnicians.map(tech => (
-                      <SelectItem key={tech.id} value={tech.name}>{tech.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            ) : (
-              <div className="space-y-2">
-                <label className="text-sm font-medium">External Provider Details</label>
-                <Input
-                  placeholder="Provider name"
-                  value={reassignment.technician}
-                  onChange={(e) => setReassignment(prev => ({ ...prev, technician: e.target.value }))}
-                />
-                {reassignment.technicianRole === 'external' && (
-                  <div className="pt-2">
-                    <label className="text-sm font-medium">Estimated Cost</label>
-                    <Input
-                      type="number"
-                      placeholder="0.00"
-                      value={reassignment.cost || ''}
-                      onChange={(e) => setReassignment(prev => ({ ...prev, cost: parseFloat(e.target.value) || 0 }))}
-                      className="mt-1"
-                    />
-                  </div>
-                )}
-              </div>
-            )}
-            
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Notes for Reassignment</label>
-              <Textarea
-                placeholder="Explain why this job is being reassigned..."
-                value={reassignment.notes}
-                onChange={(e) => setReassignment(prev => ({ ...prev, notes: e.target.value }))}
-                rows={3}
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsReassignDialogOpen(false)}>Cancel</Button>
-            <Button onClick={handleReassignJob}>Reassign Job</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <JobReassignmentDialog 
+        isOpen={isReassignDialogOpen}
+        onOpenChange={setIsReassignDialogOpen}
+        jobId={selectedJob?.id || ''}
+        otherTechnicians={otherTechnicians}
+        onReassign={handleJobReassign}
+      />
     </div>
   );
 };
