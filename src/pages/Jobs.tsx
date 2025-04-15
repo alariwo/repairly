@@ -154,6 +154,9 @@ const Jobs = () => {
   const [newStatus, setNewStatus] = useState('');
   const [statusUpdateNote, setStatusUpdateNote] = useState('');
   const dialogRef = useRef<HTMLDivElement>(null);
+  const [isAssignDialogOpen, setIsAssignDialogOpen] = useState(false);
+  const [jobToAssign, setJobToAssign] = useState<null | typeof initialJobs[0]>(null);
+  const [selectedTechnician, setSelectedTechnician] = useState('');
 
   const technicians = React.useMemo(() => {
     const techSet = new Set(localJobs.map(job => job.assignedTo));
@@ -475,6 +478,32 @@ const Jobs = () => {
     navigate(`/repair-log?jobId=${jobId}`);
   };
 
+  const openAssignDialog = (job: typeof initialJobs[0]) => {
+    setJobToAssign(job);
+    setSelectedTechnician('');
+    setIsAssignDialogOpen(true);
+  };
+
+  const handleAssignJob = () => {
+    if (!jobToAssign || !selectedTechnician) return;
+    
+    const updatedJobs = localJobs.map(job => 
+      job.id === jobToAssign.id 
+        ? { ...job, assignedTo: selectedTechnician } 
+        : job
+    );
+    
+    setLocalJobs(updatedJobs);
+    setIsAssignDialogOpen(false);
+    
+    toast({
+      title: "Job Assigned",
+      description: `Job ${jobToAssign.id} has been assigned to ${selectedTechnician}`,
+    });
+    
+    setJobToAssign(null);
+  };
+
   const handleMenuAction = useCallback((action: string, job: typeof initialJobs[0]) => {
     switch (action) {
       case 'view-details':
@@ -485,6 +514,9 @@ const Jobs = () => {
         break;
       case 'view-repair-log':
         handleViewRepairLog(job.id);
+        break;
+      case 'assign-technician':
+        openAssignDialog(job);
         break;
       case 'add-parts':
         toast({
@@ -775,6 +807,9 @@ const Jobs = () => {
                               <DropdownMenuItem onClick={() => handleMenuAction('view-repair-log', job)}>
                                 View Repair Log
                               </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => handleMenuAction('assign-technician', job)}>
+                                Assign Technician
+                              </DropdownMenuItem>
                               <DropdownMenuSeparator />
                               <DropdownMenuItem onClick={() => handleMenuAction('add-parts', job)}>
                                 Add Parts
@@ -826,298 +861,4 @@ const Jobs = () => {
           <DialogHeader>
             <DialogTitle>Create New Repair Job</DialogTitle>
             <DialogDescription>
-              Enter the details for the new repair job. All fields marked with * are required.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="customer" className="text-right">
-                Customer *
-              </Label>
-              <Input
-                id="customer"
-                value={newJob.customer}
-                onChange={(e) => setNewJob({ ...newJob, customer: e.target.value })}
-                className="col-span-3"
-              />
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="email" className="text-right">
-                Email *
-              </Label>
-              <Input
-                id="email"
-                type="email"
-                value={newJob.customerEmail}
-                onChange={(e) => setNewJob({ ...newJob, customerEmail: e.target.value })}
-                className="col-span-3"
-              />
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="phone" className="text-right">
-                Phone
-              </Label>
-              <Input
-                id="phone"
-                value={newJob.phoneNumber}
-                onChange={(e) => setNewJob({ ...newJob, phoneNumber: e.target.value })}
-                className="col-span-3"
-              />
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="address" className="text-right">
-                <MapPin className="h-4 w-4 inline mr-1" />
-                Address
-              </Label>
-              <Input
-                id="address"
-                value={newJob.address}
-                onChange={(e) => setNewJob({ ...newJob, address: e.target.value })}
-                className="col-span-3"
-              />
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="device" className="text-right">
-                Device *
-              </Label>
-              <Input
-                id="device"
-                value={newJob.device}
-                onChange={(e) => setNewJob({ ...newJob, device: e.target.value })}
-                className="col-span-3"
-              />
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="serial" className="text-right">
-                Serial Number
-              </Label>
-              <Input
-                id="serial"
-                value={newJob.serialNumber}
-                onChange={(e) => setNewJob({ ...newJob, serialNumber: e.target.value })}
-                className="col-span-3"
-              />
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="issue" className="text-right">
-                Issue *
-              </Label>
-              <Input
-                id="issue"
-                value={newJob.issue}
-                onChange={(e) => setNewJob({ ...newJob, issue: e.target.value })}
-                className="col-span-3"
-              />
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="priority" className="text-right">
-                <Flag className="h-4 w-4 inline mr-1" />
-                Priority
-              </Label>
-              <Select 
-                value={newJob.priority} 
-                onValueChange={(value) => setNewJob({ ...newJob, priority: value })}
-              >
-                <SelectTrigger className="col-span-3">
-                  <SelectValue placeholder="Select priority" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="high">High</SelectItem>
-                  <SelectItem value="medium">Medium</SelectItem>
-                  <SelectItem value="low">Low</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="dueDate" className="text-right">
-                <Calendar className="h-4 w-4 inline mr-1" />
-                Due Date
-              </Label>
-              <div className="col-span-3">
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant={"outline"}
-                      className={cn(
-                        "w-full justify-start text-left font-normal",
-                        !newJob.dueDate && "text-muted-foreground"
-                      )}
-                    >
-                      {newJob.dueDate instanceof Date ? (
-                        format(newJob.dueDate, "PPP")
-                      ) : (
-                        <span>Pick a date</span>
-                      )}
-                      <Calendar className="ml-auto h-4 w-4 opacity-50" />
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
-                    <CalendarComponent
-                      mode="single"
-                      selected={newJob.dueDate instanceof Date ? newJob.dueDate : undefined}
-                      onSelect={(date) => setNewJob({ ...newJob, dueDate: date || new Date() })}
-                      initialFocus
-                      className="p-3 pointer-events-auto"
-                    />
-                  </PopoverContent>
-                </Popover>
-              </div>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => {
-              setIsNewJobDialogOpen(false);
-              setNewJob({
-                customer: '',
-                device: '',
-                issue: '',
-                serialNumber: '',
-                customerEmail: '',
-                phoneNumber: '',
-                address: '',
-                priority: 'medium',
-                dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
-              });
-            }}>Cancel</Button>
-            <Button onClick={handleCreateJob}>Create Job</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog 
-        open={jobDetailsDialogOpen} 
-        onOpenChange={(open) => {
-          if (!open) {
-            safeCloseJobDetailsDialog();
-          }
-        }}
-      >
-        {jobToView && (
-          <DialogContent className="sm:max-w-[650px]" ref={dialogRef}>
-            <DialogHeader>
-              <DialogTitle>Job Details: {jobToView.id}</DialogTitle>
-            </DialogHeader>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <h4 className="text-sm font-medium mb-1">Customer</h4>
-                <p>{jobToView.customer}</p>
-              </div>
-              <div>
-                <h4 className="text-sm font-medium mb-1">Contact</h4>
-                <p>{jobToView.customerEmail}</p>
-                <p>{jobToView.phoneNumber}</p>
-              </div>
-              <div>
-                <h4 className="text-sm font-medium mb-1">Device</h4>
-                <p>{jobToView.device}</p>
-              </div>
-              <div>
-                <h4 className="text-sm font-medium mb-1">Serial Number</h4>
-                <p className="font-mono text-xs">{jobToView.serialNumber || 'N/A'}</p>
-              </div>
-              <div>
-                <h4 className="text-sm font-medium mb-1">Issue</h4>
-                <p>{jobToView.issue}</p>
-              </div>
-              <div>
-                <h4 className="text-sm font-medium mb-1">Status</h4>
-                <div className="mt-1">{getStatusBadge(jobToView.status)}</div>
-              </div>
-              <div>
-                <h4 className="text-sm font-medium mb-1">Created</h4>
-                <p>{jobToView.createdAt}</p>
-              </div>
-              <div>
-                <h4 className="text-sm font-medium mb-1">Due Date</h4>
-                <p>{jobToView.dueDate}</p>
-              </div>
-              <div>
-                <h4 className="text-sm font-medium mb-1">Priority</h4>
-                <div className="mt-1">{getPriorityBadge(jobToView.priority)}</div>
-              </div>
-              <div>
-                <h4 className="text-sm font-medium mb-1">Assigned To</h4>
-                <p>{jobToView.assignedTo}</p>
-              </div>
-            </div>
-            <DialogFooter className="flex justify-between items-center">
-              <div>
-                <JobPrintables job={jobToView} />
-              </div>
-              <div className="flex gap-2">
-                <Button 
-                  variant="outline" 
-                  onClick={() => handleMenuAction('view-repair-log', jobToView)}
-                >
-                  <ClipboardList className="h-4 w-4 mr-2" />
-                  View Repair Log
-                </Button>
-                <Button variant="outline" onClick={() => {
-                  openStatusUpdateDialog(jobToView);
-                  safeCloseJobDetailsDialog();
-                }}>
-                  Update Status
-                </Button>
-                <Button onClick={() => {
-                  handleMenuAction('message-customer', jobToView);
-                }}>
-                  Message Customer
-                </Button>
-              </div>
-            </DialogFooter>
-          </DialogContent>
-        )}
-      </Dialog>
-
-      <Dialog open={statusUpdateDialogOpen} onOpenChange={setStatusUpdateDialogOpen}>
-        <DialogContent className="sm:max-w-[500px]">
-          <DialogHeader>
-            <DialogTitle>Update Job Status</DialogTitle>
-            <DialogDescription>
-              Change the status of job {jobToUpdate?.id} and add notes about this update.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="space-y-2">
-              <Label>New Status</Label>
-              <Select 
-                value={newStatus} 
-                onValueChange={setNewStatus}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select new status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="picked-up">Picked Up</SelectItem>
-                  <SelectItem value="received">Received</SelectItem>
-                  <SelectItem value="diagnosis">Under Diagnosis</SelectItem>
-                  <SelectItem value="repair-in-progress">Repair In Progress</SelectItem>
-                  <SelectItem value="repair-completed">Repair Completed</SelectItem>
-                  <SelectItem value="stress-test">Stress Test</SelectItem>
-                  <SelectItem value="ready-for-delivery">Ready for Delivery</SelectItem>
-                  <SelectItem value="delivered">Delivered</SelectItem>
-                  <SelectItem value="completed">Completed</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label>Update Notes</Label>
-              <Textarea
-                placeholder="Add notes about this status change..."
-                value={statusUpdateNote}
-                onChange={(e) => setStatusUpdateNote(e.target.value)}
-                rows={4}
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setStatusUpdateDialogOpen(false)}>Cancel</Button>
-            <Button onClick={handleStatusUpdateSubmit}>Update Status</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </div>
-  );
-};
-
-export default Jobs;
+              Enter the details for the new repair job.

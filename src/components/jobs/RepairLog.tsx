@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+
+import React, { useState, useEffect } from 'react';
 import { 
   Card, 
   CardContent, 
@@ -30,6 +31,7 @@ import { CalendarIcon, Clock, MoreHorizontal, Plus, Clipboard, User, Wrench, Ext
 import { Badge } from "@/components/ui/badge";
 import { format } from 'date-fns';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { useToast } from "@/components/ui/use-toast";
 import { 
   Select,
   SelectContent,
@@ -72,6 +74,9 @@ const externalProviders = [
 ];
 
 export const RepairLog = ({ jobId, jobTitle, isAdmin = false }: RepairLogProps) => {
+  const { toast } = useToast();
+
+  // Initial demo data - in a real app, this would come from an API
   const [logEntries, setLogEntries] = useState<RepairLogEntry[]>([
     {
       id: '1',
@@ -115,7 +120,7 @@ export const RepairLog = ({ jobId, jobTitle, isAdmin = false }: RepairLogProps) 
     action: '',
     notes: '',
     duration: 0,
-    cost: 0
+    cost: undefined
   });
   
   const [reassignment, setReassignment] = useState({
@@ -124,6 +129,13 @@ export const RepairLog = ({ jobId, jobTitle, isAdmin = false }: RepairLogProps) 
     notes: '',
     cost: 0
   });
+  
+  // Simulate data loading - in a real app, this would fetch from an API
+  useEffect(() => {
+    // This would be an API call in a real app
+    console.log(`Loading repair log entries for job: ${jobId}`);
+    // setLogEntries(fetchedEntries) would happen here
+  }, [jobId]);
   
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -142,10 +154,10 @@ export const RepairLog = ({ jobId, jobTitle, isAdmin = false }: RepairLogProps) 
     }));
   };
   
-  const handleReassignmentRoleChange = (value: string) => {
+  const handleReassignmentRoleChange = (value: 'internal' | 'external') => {
     setReassignment(prev => ({ 
       ...prev, 
-      technicianRole: value as 'internal' | 'external' 
+      technicianRole: value
     }));
   };
   
@@ -167,6 +179,16 @@ export const RepairLog = ({ jobId, jobTitle, isAdmin = false }: RepairLogProps) 
   };
   
   const handleAddEntry = () => {
+    // Validation
+    if (!newEntry.technician || !newEntry.action) {
+      toast({
+        title: "Missing Information",
+        description: "Please fill all required fields",
+        variant: "destructive"
+      });
+      return;
+    }
+    
     const entry: RepairLogEntry = {
       id: (logEntries.length + 1).toString(),
       timestamp: new Date(),
@@ -182,7 +204,12 @@ export const RepairLog = ({ jobId, jobTitle, isAdmin = false }: RepairLogProps) 
       action: '',
       notes: '',
       duration: 0,
-      cost: 0
+      cost: undefined
+    });
+    
+    toast({
+      title: "Entry Added",
+      description: "New repair log entry has been added successfully",
     });
   };
   
@@ -232,6 +259,11 @@ export const RepairLog = ({ jobId, jobTitle, isAdmin = false }: RepairLogProps) 
     setLogEntries(prev => [...prev, reassignedEntry]);
     setIsReassignOpen(false);
     setSelectedEntryId(null);
+    
+    toast({
+      title: "Work Reassigned",
+      description: `Repair work has been reassigned to ${reassignment.technician}`,
+    });
   };
   
   return (
@@ -474,7 +506,10 @@ export const RepairLog = ({ jobId, jobTitle, isAdmin = false }: RepairLogProps) 
             <div className="grid gap-4 py-2">
               <div className="grid gap-2">
                 <Label>Technician Type</Label>
-                <Select defaultValue="internal" onValueChange={handleReassignmentRoleChange}>
+                <Select 
+                  value={reassignment.technicianRole} 
+                  onValueChange={(value: string) => handleReassignmentRoleChange(value as 'internal' | 'external')}
+                >
                   <SelectTrigger>
                     <SelectValue placeholder="Select type" />
                   </SelectTrigger>
