@@ -1,10 +1,9 @@
-
 import React, { useState, useCallback, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { 
   Users, Clock, CheckCircle, AlertTriangle, PlusCircle, 
-  ArrowUpRight, Package, FileText 
+  ArrowUpRight, Package, FileText, Calendar
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Progress } from '@/components/ui/progress';
@@ -28,6 +27,13 @@ const recentJobs = [
   { id: 'JOB-1237', customer: 'Emily Davis', service: 'PC Virus Removal', date: '2025-04-07', status: 'completed' },
 ];
 
+// Define overdue jobs
+const overdueJobs = [
+  { id: 'JOB-1230', customer: 'Robert Wilson', service: 'MacBook Logic Board', dueDate: '2025-04-05', daysOverdue: 9 },
+  { id: 'JOB-1231', customer: 'Jennifer Adams', service: 'iPhone Battery Replacement', dueDate: '2025-04-08', daysOverdue: 6 },
+  { id: 'JOB-1232', customer: 'Thomas Lee', service: 'Dell Laptop Screen', dueDate: '2025-04-10', daysOverdue: 4 },
+];
+
 // Define proper type interfaces to fix TypeScript errors
 interface StatCardProps {
   title: string;
@@ -49,6 +55,17 @@ interface JobsTableProps {
     status: string;
   }>;
   onViewJobDetails: (jobId: string) => void;
+}
+
+interface OverdueJobsCardProps {
+  jobs: Array<{
+    id: string;
+    customer: string;
+    service: string;
+    dueDate: string;
+    daysOverdue: number;
+  }>;
+  onViewJob: (jobId: string) => void;
 }
 
 interface QuickActionsCardProps {
@@ -186,6 +203,60 @@ const JobsTable = React.memo(({ jobs, onViewJobDetails }: JobsTableProps) => (
   </div>
 ));
 
+const OverdueJobsCard = React.memo(({ jobs, onViewJob }: OverdueJobsCardProps) => (
+  <Card className="border-red-200">
+    <CardHeader className="pb-2">
+      <CardTitle className="flex items-center">
+        <Calendar className="h-5 w-5 text-red-500 mr-2" />
+        Overdue Repairs
+      </CardTitle>
+    </CardHeader>
+    <CardContent>
+      {jobs.length > 0 ? (
+        <div className="space-y-4">
+          {jobs.map(job => (
+            <div key={job.id} className="border-b pb-3 last:border-0">
+              <div className="flex justify-between items-start">
+                <div>
+                  <h4 className="font-medium">{job.service}</h4>
+                  <p className="text-sm text-gray-500">{job.customer}</p>
+                </div>
+                <div className="text-right">
+                  <span className="inline-flex px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                    {job.daysOverdue} days overdue
+                  </span>
+                </div>
+              </div>
+              <div className="flex justify-between mt-2 items-center">
+                <span className="text-xs text-gray-500">Due: {job.dueDate}</span>
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="h-7 px-2 text-xs"
+                  onClick={() => onViewJob(job.id)}
+                >
+                  View Details
+                </Button>
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="py-6 text-center text-gray-500">
+          <p>No overdue repairs</p>
+        </div>
+      )}
+      <Button 
+        variant="outline" 
+        className="w-full mt-4 text-red-600 border-red-200 hover:bg-red-50"
+        onClick={() => onViewJob('all')}
+      >
+        View All Overdue Jobs
+      </Button>
+    </CardContent>
+  </Card>
+));
+
 const QuickActionsCard = React.memo(({ onQuickAction }: QuickActionsCardProps) => (
   <Card>
     <CardHeader className="flex flex-row items-center justify-between pb-2">
@@ -224,7 +295,6 @@ const Dashboard = () => {
   // Memoize callback functions to prevent unnecessary re-renders
   const handleNewJobClick = useCallback(() => {
     navigate('/jobs');
-    // Give time for navigation then show the dialog
     setTimeout(() => {
       window.dispatchEvent(new CustomEvent('open-new-job-dialog'));
     }, 100);
@@ -239,7 +309,6 @@ const Dashboard = () => {
       title: "Report Generation",
       description: "Generating full repair report...",
     });
-    // Simulate report generation
     setTimeout(() => {
       toast({
         title: "Report Ready",
@@ -271,12 +340,20 @@ const Dashboard = () => {
     navigate(`/jobs?jobId=${jobId}`);
   }, [navigate]);
 
+  const handleViewOverdueJob = useCallback((jobId: string) => {
+    if (jobId === 'all') {
+      navigate('/jobs?filter=overdue');
+    } else {
+      navigate(`/jobs?jobId=${jobId}`);
+    }
+  }, [navigate]);
+
   // Memoize stats to prevent unnecessary re-calculations
   const stats = useMemo(() => [
     { title: 'Pending Jobs', icon: <Clock className="h-4 w-4 text-repairam" />, value: '12', subtitle: '3 need attention' },
     { title: 'Completed Jobs', icon: <CheckCircle className="h-4 w-4 text-repairam" />, value: '142', subtitle: 'This month' },
     { title: 'Active Customers', icon: <Users className="h-4 w-4 text-repairam" />, value: '89', subtitle: '+12% from last month' },
-    { title: 'Inventory Alerts', icon: <AlertTriangle className="h-4 w-4 text-amber-500" />, value: '7', subtitle: 'Items low in stock' }
+    { title: 'Overdue Repairs', icon: <Calendar className="h-4 w-4 text-red-500" />, value: overdueJobs.length.toString(), subtitle: 'Need immediate attention' }
   ], []);
 
   return (
@@ -305,15 +382,23 @@ const Dashboard = () => {
         <RepairJobsCard onViewFullReport={handleViewFullReport} />
       </div>
 
-      <div className="space-y-4">
-        <div className="flex justify-between items-center">
-          <h2 className="text-lg font-semibold">Recent Jobs</h2>
-          <Button variant="link" className="text-repairam hover:text-repairam-dark p-0" onClick={handleViewAllJobs}>
-            View All Jobs
-          </Button>
-        </div>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="md:col-span-2">
+          <div className="space-y-4">
+            <div className="flex justify-between items-center">
+              <h2 className="text-lg font-semibold">Recent Jobs</h2>
+              <Button variant="link" className="text-repairam hover:text-repairam-dark p-0" onClick={handleViewAllJobs}>
+                View All Jobs
+              </Button>
+            </div>
 
-        <JobsTable jobs={recentJobs} onViewJobDetails={handleViewJobDetails} />
+            <JobsTable jobs={recentJobs} onViewJobDetails={handleViewJobDetails} />
+          </div>
+        </div>
+        
+        <div>
+          <OverdueJobsCard jobs={overdueJobs} onViewJob={handleViewOverdueJob} />
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
