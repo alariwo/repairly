@@ -465,7 +465,7 @@ const Jobs = () => {
       } catch (error) {
         toast({
           title: "Email Failed",
-          description: "Failed to send email notification to customer",
+          description: "Failed to send email to customer",
           variant: "destructive"
         });
       }
@@ -862,3 +862,247 @@ const Jobs = () => {
             <DialogTitle>Create New Repair Job</DialogTitle>
             <DialogDescription>
               Enter the details for the new repair job.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsNewJobDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button className="bg-repairam hover:bg-repairam-dark" onClick={handleCreateJob}>
+              Create Job
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={statusUpdateDialogOpen} onOpenChange={setStatusUpdateDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Update Job Status</DialogTitle>
+            <DialogDescription>
+              Change the current status of this repair job.
+            </DialogDescription>
+          </DialogHeader>
+          
+          {jobToUpdate && (
+            <div className="grid gap-4 py-4">
+              <div className="grid gap-2">
+                <Label htmlFor="status">Current Status</Label>
+                <Badge variant="outline" className="inline-flex w-fit px-3 py-1">
+                  {jobToUpdate.status.replace('-', ' ')}
+                </Badge>
+              </div>
+              
+              <div className="grid gap-2">
+                <Label htmlFor="new-status">New Status</Label>
+                <Select value={newStatus} onValueChange={setNewStatus}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select new status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="received">Received</SelectItem>
+                    <SelectItem value="diagnosis">Under Diagnosis</SelectItem>
+                    <SelectItem value="repair-in-progress">Repair In Progress</SelectItem>
+                    <SelectItem value="repair-completed">Repair Completed</SelectItem>
+                    <SelectItem value="stress-test">Stress Test</SelectItem>
+                    <SelectItem value="ready-for-delivery">Ready for Delivery</SelectItem>
+                    <SelectItem value="delivered">Delivered</SelectItem>
+                    <SelectItem value="completed">Completed</SelectItem>
+                    <SelectItem value="picked-up">Picked Up</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              <div className="grid gap-2">
+                <Label htmlFor="notes">Add Notes (Optional)</Label>
+                <Textarea 
+                  id="notes" 
+                  placeholder="Any additional information about this status change..."
+                  value={statusUpdateNote}
+                  onChange={(e) => setStatusUpdateNote(e.target.value)}
+                  rows={3}
+                />
+              </div>
+            </div>
+          )}
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setStatusUpdateDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleStatusUpdateSubmit}
+              disabled={!newStatus || (jobToUpdate && newStatus === jobToUpdate.status)}
+            >
+              Update Status
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isAssignDialogOpen} onOpenChange={setIsAssignDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Assign Job to Technician</DialogTitle>
+            <DialogDescription>
+              Select which technician should handle this repair job.
+            </DialogDescription>
+          </DialogHeader>
+          
+          {jobToAssign && (
+            <div className="grid gap-4 py-4">
+              <div className="grid gap-2">
+                <Label>Job Information</Label>
+                <div className="bg-gray-50 p-3 rounded-md text-sm">
+                  <p><strong>Job ID:</strong> {jobToAssign.id}</p>
+                  <p><strong>Device:</strong> {jobToAssign.device}</p>
+                  <p><strong>Issue:</strong> {jobToAssign.issue}</p>
+                  <p><strong>Current Technician:</strong> {jobToAssign.assignedTo}</p>
+                </div>
+              </div>
+              
+              <div className="grid gap-2">
+                <Label htmlFor="technician">Assign to Technician</Label>
+                <Select value={selectedTechnician} onValueChange={setSelectedTechnician}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select technician" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {technicians.map(tech => (
+                      <SelectItem key={tech} value={tech}>{tech}</SelectItem>
+                    ))}
+                    <SelectItem value="Unassigned">Unassigned</SelectItem>
+                    <SelectItem value="Mike Technician">Mike Technician</SelectItem>
+                    <SelectItem value="Lisa Technician">Lisa Technician</SelectItem>
+                    <SelectItem value="John Technician">John Technician</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          )}
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsAssignDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleAssignJob}
+              disabled={!selectedTechnician || (jobToAssign && selectedTechnician === jobToAssign.assignedTo)}
+            >
+              Assign Job
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={jobDetailsDialogOpen} onOpenChange={(open) => {
+        if (!open) safeCloseJobDetailsDialog();
+      }}>
+        <DialogContent className="sm:max-w-[700px]">
+          <DialogHeader>
+            <DialogTitle>Job Details</DialogTitle>
+          </DialogHeader>
+          
+          {jobToView && (
+            <div className="space-y-6">
+              <div className="flex justify-between items-start">
+                <div>
+                  <h3 className="text-lg font-semibold">{jobToView.device}</h3>
+                  <p className="text-gray-500">{jobToView.issue}</p>
+                </div>
+                <div>
+                  {getStatusBadge(jobToView.status)}
+                </div>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-4">
+                  <div>
+                    <h4 className="text-sm font-medium text-gray-500">Customer Information</h4>
+                    <div className="mt-1">
+                      <p className="font-medium">{jobToView.customer}</p>
+                      <p className="text-sm">{jobToView.customerEmail}</p>
+                      <p className="text-sm">{jobToView.phoneNumber || 'No phone number'}</p>
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <h4 className="text-sm font-medium text-gray-500">Serial Number</h4>
+                    <p className="mt-1 font-mono text-sm">{jobToView.serialNumber || 'N/A'}</p>
+                  </div>
+                </div>
+                
+                <div className="space-y-4">
+                  <div>
+                    <h4 className="text-sm font-medium text-gray-500">Assignment</h4>
+                    <p className="mt-1">{jobToView.assignedTo}</p>
+                  </div>
+                  
+                  <div>
+                    <h4 className="text-sm font-medium text-gray-500">Dates</h4>
+                    <div className="mt-1 grid grid-cols-2 gap-2">
+                      <div>
+                        <p className="text-xs text-gray-500">Created</p>
+                        <p className="text-sm">{jobToView.createdAt}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-gray-500">Due Date</p>
+                        <p className="text-sm">{jobToView.dueDate}</p>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <h4 className="text-sm font-medium text-gray-500">Priority</h4>
+                    <div className="mt-1">
+                      {getPriorityBadge(jobToView.priority)}
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="space-y-2">
+                <h4 className="text-sm font-medium text-gray-500">Actions</h4>
+                <div className="flex flex-wrap gap-2">
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => {
+                      safeCloseJobDetailsDialog();
+                      openStatusUpdateDialog(jobToView);
+                    }}
+                  >
+                    Update Status
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => {
+                      safeCloseJobDetailsDialog();
+                      openAssignDialog(jobToView);
+                    }}
+                  >
+                    Assign Technician
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => {
+                      safeCloseJobDetailsDialog();
+                      navigate(`/repair-log?jobId=${jobToView.id}`);
+                    }}
+                  >
+                    View Repair Log
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+};
+
+export default Jobs;
