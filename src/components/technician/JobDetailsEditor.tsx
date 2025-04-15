@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Save, Upload, Image, UserRound } from 'lucide-react';
+import { Save, Upload, Image, UserRound, Mail } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -11,6 +11,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useToast } from '@/hooks/use-toast';
+import { sendEmailNotification } from '@/utils/notifications';
 
 type Job = {
   id: string;
@@ -25,6 +26,7 @@ type Job = {
   serialNumber: string;
   customer: string;
   phoneNumber: string;
+  customerEmail?: string;
 };
 
 type JobDetailsEditorProps = {
@@ -32,23 +34,64 @@ type JobDetailsEditorProps = {
   onUpdate: (updatedJob: Partial<Job>) => void;
   onCancel: () => void;
   onReassign: () => void;
+  onNotifyCustomer?: (job: Job, notes: string) => void;
 };
 
 export const JobDetailsEditor = ({ 
   job, 
   onUpdate, 
   onCancel,
-  onReassign
+  onReassign,
+  onNotifyCustomer
 }: JobDetailsEditorProps) => {
   const { toast } = useToast();
   const [jobNotes, setJobNotes] = React.useState(job.notes);
   const [jobStatus, setJobStatus] = React.useState(job.status);
+  const [isNotifying, setIsNotifying] = React.useState(false);
 
   const handleSave = () => {
     onUpdate({ 
       notes: jobNotes, 
       status: jobStatus 
     });
+  };
+
+  const handleNotifyCustomer = async () => {
+    if (!job.customerEmail) {
+      toast({
+        title: "Email Missing",
+        description: "This customer doesn't have an email address registered.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setIsNotifying(true);
+    try {
+      await sendEmailNotification(
+        job.customerEmail,
+        job.id,
+        jobStatus
+      );
+      
+      toast({
+        title: "Customer Notified",
+        description: `Email sent to customer about job ${job.id}`,
+      });
+      
+      if (onNotifyCustomer) {
+        onNotifyCustomer(job, jobNotes);
+      }
+    } catch (error) {
+      toast({
+        title: "Notification Failed",
+        description: "Failed to send email to customer. Please try again.",
+        variant: "destructive"
+      });
+      console.error("Email notification error:", error);
+    } finally {
+      setIsNotifying(false);
+    }
   };
 
   const handleFileUpload = (type: 'before' | 'after') => {
@@ -126,13 +169,22 @@ export const JobDetailsEditor = ({
             rows={4}
           />
         </div>
-        <div className="pt-3">
+        <div className="flex space-x-2 pt-3">
           <Button 
             variant="outline"
-            className="w-full"
+            className="flex-1"
             onClick={onReassign}
           >
             <UserRound className="mr-2 h-4 w-4" /> Reassign Job
+          </Button>
+          
+          <Button 
+            variant="secondary"
+            className="flex-1"
+            onClick={handleNotifyCustomer}
+            disabled={isNotifying || !job.customerEmail}
+          >
+            <Mail className="mr-2 h-4 w-4" /> Notify Customer
           </Button>
         </div>
       </div>

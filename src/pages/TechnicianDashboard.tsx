@@ -1,10 +1,11 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { JobList } from '@/components/technician/JobList';
 import { JobDetailsEditor } from '@/components/technician/JobDetailsEditor';
 import { JobReassignmentDialog } from '@/components/technician/JobReassignmentDialog';
+import { sendEmailWithAttachments } from '@/utils/notifications';
 
 // Mock data
 const currentTechnician = {
@@ -25,7 +26,8 @@ const technicianJobs = [
     dueDate: '2025-04-15',
     serialNumber: 'SN12345678',
     customer: 'John Smith',
-    phoneNumber: '555-123-4567'
+    phoneNumber: '555-123-4567',
+    customerEmail: 'john.smith@example.com'
   },
   {
     id: 'JOB-1003',
@@ -39,7 +41,8 @@ const technicianJobs = [
     dueDate: '2025-04-18',
     serialNumber: 'RZ8G61LCX2P',
     customer: 'Michael Brown',
-    phoneNumber: '555-345-6789'
+    phoneNumber: '555-345-6789',
+    customerEmail: 'michael.b@example.com'
   },
   {
     id: 'JOB-1005',
@@ -53,7 +56,8 @@ const technicianJobs = [
     dueDate: '2025-04-13',
     serialNumber: 'DMPWH8MYHJKT',
     customer: 'David Wilson',
-    phoneNumber: '555-567-8901'
+    phoneNumber: '555-567-8901',
+    customerEmail: 'david.w@example.com'
   },
 ];
 
@@ -68,6 +72,13 @@ const TechnicianDashboard = () => {
   const [jobs, setJobs] = useState(technicianJobs);
   const [selectedJob, setSelectedJob] = useState<null | typeof technicianJobs[0]>(null);
   const [isReassignDialogOpen, setIsReassignDialogOpen] = useState(false);
+  const [statusUpdateHistory, setStatusUpdateHistory] = useState<Record<string, string[]>>({});
+
+  // Effect to simulate syncing with backend/database
+  useEffect(() => {
+    console.log('Jobs updated:', jobs);
+    // This would be where you sync with your backend in a real app
+  }, [jobs]);
 
   const handleSelectJob = (job: typeof technicianJobs[0]) => {
     setSelectedJob(job);
@@ -96,17 +107,78 @@ const TechnicianDashboard = () => {
     }
     
     const newStatus = updatedJobData.status;
-    if (newStatus === 'repair-completed' || newStatus === 'ready-for-delivery') {
-      toast({
-        title: "Admin Notification Sent",
-        description: `Admin has been notified about the status change for job ${selectedJob.id}.`,
-      });
+    if (newStatus && newStatus !== selectedJob.status) {
+      // Track status update history
+      setStatusUpdateHistory(prev => ({
+        ...prev,
+        [selectedJob.id]: [
+          ...(prev[selectedJob.id] || []),
+          `Status changed from ${selectedJob.status} to ${newStatus} on ${new Date().toLocaleString()}`
+        ]
+      }));
+
+      if (newStatus === 'repair-completed' || newStatus === 'ready-for-delivery') {
+        toast({
+          title: "Admin Notification Sent",
+          description: `Admin has been notified about the status change for job ${selectedJob.id}.`,
+        });
+      }
     }
     
     toast({
       title: "Job Updated",
       description: `Job ${selectedJob.id} has been updated successfully.`,
     });
+  };
+
+  const handleNotifyCustomer = async (job: typeof technicianJobs[0], notes: string) => {
+    if (!job.customerEmail) return;
+    
+    const statusName = job.status.replace(/-/g, ' ');
+    const emailContent = `
+      Dear ${job.customer},
+      
+      This is an update regarding your repair job (${job.id}).
+      
+      Current Status: ${statusName}
+      
+      Additional Notes:
+      ${notes || 'No additional notes provided.'}
+      
+      If you have any questions, please contact us.
+      
+      Thank you for choosing our service.
+    `;
+    
+    // Prepare any image attachments if needed
+    const attachments = [];
+    if (job.afterImages.length > 0) {
+      attachments.push({
+        name: 'repair-photos.jpg',
+        type: 'image/jpeg'
+      });
+    }
+    
+    try {
+      await sendEmailWithAttachments(
+        job.customerEmail,
+        `Update on Your Repair Job ${job.id}`,
+        emailContent,
+        attachments
+      );
+      
+      // Update notification history if needed
+      setStatusUpdateHistory(prev => ({
+        ...prev,
+        [job.id]: [
+          ...(prev[job.id] || []),
+          `Customer notified about status "${statusName}" on ${new Date().toLocaleString()}`
+        ]
+      }));
+      
+    } catch (error) {
+      console.error('Failed to send email with attachments:', error);
+    }
   };
 
   const handleJobReassign = (reassignmentData: any) => {
@@ -158,6 +230,7 @@ const TechnicianDashboard = () => {
               onUpdate={handleJobUpdate}
               onCancel={() => setSelectedJob(null)}
               onReassign={() => setIsReassignDialogOpen(true)}
+              onNotifyCustomer={handleNotifyCustomer}
             />
           </CardContent>
         </Card>
