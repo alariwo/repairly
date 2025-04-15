@@ -1,16 +1,18 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { JobList } from '@/components/technician/JobList';
 import { JobDetailsEditor } from '@/components/technician/JobDetailsEditor';
 import { JobReassignmentDialog } from '@/components/technician/JobReassignmentDialog';
+import { ExternalTechnicianWorkForm } from '@/components/technician/ExternalTechnicianWorkForm';
 import { sendEmailWithAttachments } from '@/utils/notifications';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { UserRound, ExternalLink } from 'lucide-react';
 
-// Mock data
 const currentTechnician = {
   id: 'tech-001',
   name: 'Mike Technician',
+  isExternal: false
 };
 
 const technicianJobs = [
@@ -61,31 +63,75 @@ const technicianJobs = [
   },
 ];
 
+const externalTechAssignments = [
+  {
+    id: 'JOB-1008',
+    deviceType: 'MacBook Pro 2021',
+    issue: 'Logic Board Replacement',
+    status: 'assigned-to-external',
+    notes: 'Need specialized repair. Assigned to external technician.',
+    beforeImages: [],
+    afterImages: [],
+    createdAt: '2025-04-12',
+    dueDate: '2025-04-22',
+    serialNumber: 'C02G26ZFMD6M',
+    customer: 'Edward Thompson',
+    phoneNumber: '555-999-8888',
+    customerEmail: 'edward.t@example.com',
+    externalTechnicianId: 'tech-005',
+    externalTechnicianName: 'Express Repair'
+  }
+];
+
 const otherTechnicians = [
   { id: 'tech-002', name: 'Lisa Technician' },
   { id: 'tech-003', name: 'John Technician' },
   { id: 'tech-004', name: 'Sarah Technician' },
+  { id: 'tech-005', name: 'Express Repair', isExternal: true },
 ];
 
 const TechnicianDashboard = () => {
   const { toast } = useToast();
   const [jobs, setJobs] = useState(technicianJobs);
+  const [externalJobs, setExternalJobs] = useState(externalTechAssignments);
   const [selectedJob, setSelectedJob] = useState<null | typeof technicianJobs[0]>(null);
   const [isReassignDialogOpen, setIsReassignDialogOpen] = useState(false);
   const [statusUpdateHistory, setStatusUpdateHistory] = useState<Record<string, string[]>>({});
+  const [activeTab, setActiveTab] = useState('internal');
+  const [showExternalForm, setShowExternalForm] = useState(false);
+  const [selectedExternalJob, setSelectedExternalJob] = useState<null | typeof externalTechAssignments[0]>(null);
 
-  // Effect to simulate syncing with backend/database
+  const isExternalTechnician = currentTechnician.isExternal;
+
   useEffect(() => {
     console.log('Jobs updated:', jobs);
-    // This would be where you sync with your backend in a real app
   }, [jobs]);
+
+  useEffect(() => {
+    if (isExternalTechnician) {
+      setActiveTab('external');
+    }
+  }, [isExternalTechnician]);
 
   const handleSelectJob = (job: typeof technicianJobs[0]) => {
     setSelectedJob(job);
+    setSelectedExternalJob(null);
+    setShowExternalForm(false);
     
     toast({
       title: "Job Selected",
       description: `You are now editing job ${job.id}`,
+    });
+  };
+
+  const handleSelectExternalJob = (job: typeof externalTechAssignments[0]) => {
+    setSelectedExternalJob(job);
+    setSelectedJob(null);
+    setShowExternalForm(true);
+    
+    toast({
+      title: "External Job Selected",
+      description: `You are now viewing external job ${job.id}`,
     });
   };
 
@@ -100,7 +146,6 @@ const TechnicianDashboard = () => {
     
     setJobs(updatedJobs);
     
-    // Find the updated job to set as selected
     const updatedJob = updatedJobs.find(job => job.id === selectedJob.id);
     if (updatedJob) {
       setSelectedJob(updatedJob);
@@ -108,7 +153,6 @@ const TechnicianDashboard = () => {
     
     const newStatus = updatedJobData.status;
     if (newStatus && newStatus !== selectedJob.status) {
-      // Track status update history
       setStatusUpdateHistory(prev => ({
         ...prev,
         [selectedJob.id]: [
@@ -150,7 +194,6 @@ const TechnicianDashboard = () => {
       Thank you for choosing our service.
     `;
     
-    // Prepare any image attachments if needed
     const attachments = [];
     if (job.afterImages.length > 0) {
       attachments.push({
@@ -167,7 +210,6 @@ const TechnicianDashboard = () => {
         attachments
       );
       
-      // Update notification history if needed
       setStatusUpdateHistory(prev => ({
         ...prev,
         [job.id]: [
@@ -176,8 +218,18 @@ const TechnicianDashboard = () => {
         ]
       }));
       
+      toast({
+        title: "Customer Notified",
+        description: "An email has been sent to the customer with the status update.",
+      });
+      
     } catch (error) {
       console.error('Failed to send email with attachments:', error);
+      toast({
+        title: "Notification Failed",
+        description: "Failed to send email notification to customer.",
+        variant: "destructive"
+      });
     }
   };
 
@@ -197,44 +249,134 @@ const TechnicianDashboard = () => {
     setIsReassignDialogOpen(false);
   };
 
+  const handleExternalWorkSubmit = (notes: string, totalCost: number, lineItems: any[]) => {
+    if (!selectedExternalJob) return;
+    
+    const updatedExternalJobs = externalJobs.map(job => 
+      job.id === selectedExternalJob.id 
+        ? { 
+            ...job, 
+            notes: job.notes + '\n\n' + notes,
+            status: 'external-work-completed',
+            billingAmount: totalCost,
+            billingLineItems: lineItems
+          } 
+        : job
+    );
+    
+    setExternalJobs(updatedExternalJobs);
+    setSelectedExternalJob(null);
+    setShowExternalForm(false);
+    
+    toast({
+      title: "Work Report Submitted",
+      description: `Your report for job ${selectedExternalJob.id} has been submitted successfully.`,
+    });
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h1 className="text-2xl font-bold tracking-tight">Technician Dashboard</h1>
         <div className="text-sm text-gray-500">
           Logged in as <span className="font-semibold">{currentTechnician.name}</span>
+          {currentTechnician.isExternal && <span className="ml-1 text-purple-600">(External)</span>}
         </div>
       </div>
 
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle>My Assigned Jobs</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <JobList 
-            jobs={jobs} 
-            onSelectJob={handleSelectJob} 
-            selectedJobId={selectedJob?.id || null} 
-          />
-        </CardContent>
-      </Card>
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
+        <TabsList>
+          {!isExternalTechnician && (
+            <TabsTrigger value="internal" className="flex items-center gap-1.5">
+              <UserRound className="h-4 w-4" />
+              <span>My Assigned Jobs</span>
+            </TabsTrigger>
+          )}
+          <TabsTrigger value="external" className="flex items-center gap-1.5">
+            <ExternalLink className="h-4 w-4" />
+            <span>External Work</span>
+          </TabsTrigger>
+        </TabsList>
+        
+        <TabsContent value="internal">
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle>My Assigned Jobs</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <JobList 
+                jobs={jobs} 
+                onSelectJob={handleSelectJob} 
+                selectedJobId={selectedJob?.id || null} 
+              />
+            </CardContent>
+          </Card>
 
-      {selectedJob && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Update Job: {selectedJob.id}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <JobDetailsEditor 
-              job={selectedJob}
-              onUpdate={handleJobUpdate}
-              onCancel={() => setSelectedJob(null)}
-              onReassign={() => setIsReassignDialogOpen(true)}
-              onNotifyCustomer={handleNotifyCustomer}
+          {selectedJob && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Update Job: {selectedJob.id}</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <JobDetailsEditor 
+                  job={selectedJob}
+                  onUpdate={handleJobUpdate}
+                  onCancel={() => setSelectedJob(null)}
+                  onReassign={() => setIsReassignDialogOpen(true)}
+                  onNotifyCustomer={handleNotifyCustomer}
+                />
+              </CardContent>
+            </Card>
+          )}
+        </TabsContent>
+        
+        <TabsContent value="external">
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle>External Work Assignments</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {externalJobs.length > 0 ? (
+                <div className="space-y-4">
+                  {externalJobs.map(job => (
+                    <div 
+                      key={job.id}
+                      className={`p-4 border rounded-lg cursor-pointer hover:bg-gray-50 transition-colors ${
+                        selectedExternalJob?.id === job.id ? 'border-blue-500 bg-blue-50' : 'border-gray-200'
+                      }`}
+                      onClick={() => handleSelectExternalJob(job)}
+                    >
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <h3 className="font-medium">{job.id}: {job.deviceType}</h3>
+                          <p className="text-sm text-gray-600">{job.issue}</p>
+                          <p className="text-xs text-gray-500 mt-1">Due: {job.dueDate}</p>
+                        </div>
+                        <div>
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
+                            External Work
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-6 text-gray-500">
+                  <p>No external work assignments found.</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {showExternalForm && selectedExternalJob && (
+            <ExternalTechnicianWorkForm 
+              jobId={selectedExternalJob.id}
+              onSubmit={handleExternalWorkSubmit}
             />
-          </CardContent>
-        </Card>
-      )}
+          )}
+        </TabsContent>
+      </Tabs>
 
       <JobReassignmentDialog 
         isOpen={isReassignDialogOpen}

@@ -865,6 +865,134 @@ const Jobs = () => {
             </DialogDescription>
           </DialogHeader>
           
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label htmlFor="customer">Customer Name</Label>
+              <Input
+                id="customer"
+                name="customer"
+                placeholder="Customer name"
+                value={newJob.customer}
+                onChange={(e) => setNewJob({ ...newJob, customer: e.target.value })}
+              />
+            </div>
+            
+            <div className="grid gap-2">
+              <Label htmlFor="device">Device Type</Label>
+              <Input
+                id="device"
+                name="device"
+                placeholder="iPhone 13, MacBook Pro, etc."
+                value={newJob.device}
+                onChange={(e) => setNewJob({ ...newJob, device: e.target.value })}
+              />
+            </div>
+            
+            <div className="grid gap-2">
+              <Label htmlFor="issue">Issue Description</Label>
+              <Textarea
+                id="issue"
+                name="issue"
+                placeholder="Describe the issue with the device"
+                value={newJob.issue}
+                onChange={(e) => setNewJob({ ...newJob, issue: e.target.value })}
+                rows={3}
+              />
+            </div>
+            
+            <div className="grid gap-2">
+              <Label htmlFor="serialNumber">Serial Number (Optional)</Label>
+              <Input
+                id="serialNumber"
+                name="serialNumber"
+                placeholder="Device serial number"
+                value={newJob.serialNumber}
+                onChange={(e) => setNewJob({ ...newJob, serialNumber: e.target.value })}
+              />
+            </div>
+            
+            <div className="grid gap-2">
+              <Label htmlFor="customerEmail">Customer Email</Label>
+              <Input
+                id="customerEmail"
+                name="customerEmail"
+                type="email"
+                placeholder="customer@example.com"
+                value={newJob.customerEmail}
+                onChange={(e) => setNewJob({ ...newJob, customerEmail: e.target.value })}
+              />
+            </div>
+            
+            <div className="grid gap-2">
+              <Label htmlFor="phoneNumber">Phone Number</Label>
+              <Input
+                id="phoneNumber"
+                name="phoneNumber"
+                placeholder="555-123-4567"
+                value={newJob.phoneNumber}
+                onChange={(e) => setNewJob({ ...newJob, phoneNumber: e.target.value })}
+              />
+            </div>
+            
+            <div className="grid gap-2">
+              <Label htmlFor="address">Address (Optional)</Label>
+              <Input
+                id="address"
+                name="address"
+                placeholder="Customer address"
+                value={newJob.address}
+                onChange={(e) => setNewJob({ ...newJob, address: e.target.value })}
+              />
+            </div>
+            
+            <div className="grid gap-2">
+              <Label htmlFor="priority">Priority</Label>
+              <Select 
+                value={newJob.priority} 
+                onValueChange={(value) => setNewJob({ ...newJob, priority: value })}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select priority" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="high">High</SelectItem>
+                  <SelectItem value="medium">Medium</SelectItem>
+                  <SelectItem value="low">Low</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            
+            <div className="grid gap-2">
+              <Label>Due Date</Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant={"outline"}
+                    className={cn(
+                      "w-full justify-start text-left font-normal",
+                      !newJob.dueDate && "text-muted-foreground"
+                    )}
+                  >
+                    {newJob.dueDate ? (
+                      format(newJob.dueDate, "PPP")
+                    ) : (
+                      <span>Pick a date</span>
+                    )}
+                    <CalendarDays className="ml-auto h-4 w-4 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <CalendarComponent
+                    mode="single"
+                    selected={newJob.dueDate}
+                    onSelect={(date) => date && setNewJob({ ...newJob, dueDate: date })}
+                    initialFocus
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
+          </div>
+          
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsNewJobDialogOpen(false)}>
               Cancel

@@ -35,11 +35,14 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Search, Plus, UserPlus, UserCog, Users, Trash2, Edit, X } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Search, Plus, UserPlus, UserCog, Users, Trash2, Edit, X, ExternalLink } from 'lucide-react';
 import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
+import { useToast } from "@/hooks/use-toast";
 
 // Types for user management
-type UserRole = 'super-admin' | 'admin' | 'technician';
+type UserRole = 'super-admin' | 'admin' | 'technician' | 'external-technician';
 
 interface User {
   id: string;
@@ -48,17 +51,27 @@ interface User {
   role: UserRole;
   createdAt: Date;
   active: boolean;
+  company?: string; // Optional company field for external technicians
+  phone?: string;   // Optional phone field
+  specialties?: string[]; // Optional specialties field
+  canLogin?: boolean; // Whether the user can login to the system
 }
 
 const UserManagement = () => {
+  const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState('');
+  const [activeTab, setActiveTab] = useState('internal');
   const [isCreateUserOpen, setIsCreateUserOpen] = useState(false);
   const [newUser, setNewUser] = useState({
     name: '',
     email: '',
     role: 'technician' as UserRole,
     password: '',
-    confirmPassword: ''
+    confirmPassword: '',
+    company: '',
+    phone: '',
+    specialties: '',
+    canLogin: true
   });
   
   // Sample users data - in a real app would come from API/database
@@ -69,7 +82,8 @@ const UserManagement = () => {
       email: 'john@repairam.com',
       role: 'super-admin',
       createdAt: new Date('2023-01-10'),
-      active: true
+      active: true,
+      canLogin: true
     },
     {
       id: '2',
@@ -77,7 +91,8 @@ const UserManagement = () => {
       email: 'jane@repairam.com',
       role: 'admin',
       createdAt: new Date('2023-02-15'),
-      active: true
+      active: true,
+      canLogin: true
     },
     {
       id: '3',
@@ -85,7 +100,8 @@ const UserManagement = () => {
       email: 'mike@repairam.com',
       role: 'technician',
       createdAt: new Date('2023-03-20'),
-      active: true
+      active: true,
+      canLogin: true
     },
     {
       id: '4',
@@ -93,14 +109,35 @@ const UserManagement = () => {
       email: 'sara@repairam.com',
       role: 'technician',
       createdAt: new Date('2023-04-05'),
-      active: true
+      active: true,
+      canLogin: true
+    },
+    {
+      id: '5',
+      name: 'Express Repair Shop',
+      email: 'service@expressrepair.com',
+      role: 'external-technician',
+      createdAt: new Date('2023-06-10'),
+      active: true,
+      company: 'Express Repair',
+      phone: '555-789-0123',
+      specialties: ['Display Repair', 'Water Damage'],
+      canLogin: false
     }
   ]);
   
-  const filteredUsers = users.filter(user => 
-    user.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-    user.email.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredUsers = users.filter(user => {
+    // First filter by tab (internal vs external)
+    if (activeTab === 'internal' && user.role === 'external-technician') return false;
+    if (activeTab === 'external' && user.role !== 'external-technician') return false;
+    
+    // Then filter by search term
+    return (
+      user.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+      user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (user.company && user.company.toLowerCase().includes(searchTerm.toLowerCase()))
+    );
+  });
   
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -108,28 +145,61 @@ const UserManagement = () => {
   };
   
   const handleRoleChange = (value: string) => {
-    setNewUser(prev => ({ ...prev, role: value as UserRole }));
+    const isExternalTech = value === 'external-technician';
+    setNewUser(prev => ({ 
+      ...prev, 
+      role: value as UserRole,
+      canLogin: !isExternalTech // External technicians don't login by default
+    }));
+  };
+
+  const handleSwitchChange = (checked: boolean) => {
+    setNewUser(prev => ({
+      ...prev,
+      canLogin: checked
+    }));
   };
   
   const handleCreateUser = () => {
     // Validation would go here in a real app
+    const specialtiesArray = newUser.specialties 
+      ? newUser.specialties.split(',').map(s => s.trim()) 
+      : undefined;
+      
     const newUserData: User = {
       id: (users.length + 1).toString(),
       name: newUser.name,
       email: newUser.email,
       role: newUser.role,
       createdAt: new Date(),
-      active: true
+      active: true,
+      company: newUser.role === 'external-technician' ? newUser.company : undefined,
+      phone: newUser.phone || undefined,
+      specialties: specialtiesArray,
+      canLogin: newUser.canLogin
     };
     
     setUsers(prev => [...prev, newUserData]);
     setIsCreateUserOpen(false);
+    
+    // Reset form
     setNewUser({
       name: '',
       email: '',
       role: 'technician',
       password: '',
-      confirmPassword: ''
+      confirmPassword: '',
+      company: '',
+      phone: '',
+      specialties: '',
+      canLogin: true
+    });
+    
+    toast({
+      title: newUserData.role === 'external-technician' 
+        ? "External Technician Added" 
+        : "User Created",
+      description: `${newUserData.name} has been added successfully.`,
     });
   };
   
@@ -138,7 +208,18 @@ const UserManagement = () => {
       case 'super-admin': return 'bg-red-500';
       case 'admin': return 'bg-blue-500';
       case 'technician': return 'bg-green-500';
+      case 'external-technician': return 'bg-purple-500';
       default: return 'bg-gray-500';
+    }
+  };
+
+  const formatRoleName = (role: UserRole) => {
+    switch(role) {
+      case 'super-admin': return 'Super Admin';
+      case 'admin': return 'Admin';
+      case 'technician': return 'Technician';
+      case 'external-technician': return 'External Technician';
+      default: return role;
     }
   };
   
@@ -154,10 +235,10 @@ const UserManagement = () => {
             <div>
               <CardTitle className="flex items-center">
                 <Users className="mr-2 h-5 w-5" />
-                Manage Users
+                Manage Users & Technicians
               </CardTitle>
               <CardDescription>
-                Create and manage administrators, technicians, and access levels
+                Create and manage internal staff, technicians, and external service providers
               </CardDescription>
             </div>
             <div className="flex items-center gap-3">
@@ -177,37 +258,16 @@ const UserManagement = () => {
                     Add User
                   </Button>
                 </DialogTrigger>
-                <DialogContent>
+                <DialogContent className="sm:max-w-[550px]">
                   <DialogHeader>
                     <DialogTitle>Create New User</DialogTitle>
                     <DialogDescription>
-                      Add a new administrator or technician to the system
+                      Add a new team member or external service provider
                     </DialogDescription>
                   </DialogHeader>
                   <div className="grid gap-4 py-4">
                     <div className="grid gap-2">
-                      <Label htmlFor="name">Full Name</Label>
-                      <Input
-                        id="name"
-                        name="name"
-                        placeholder="John Doe"
-                        value={newUser.name}
-                        onChange={handleInputChange}
-                      />
-                    </div>
-                    <div className="grid gap-2">
-                      <Label htmlFor="email">Email</Label>
-                      <Input
-                        id="email"
-                        name="email"
-                        type="email"
-                        placeholder="john@example.com"
-                        value={newUser.email}
-                        onChange={handleInputChange}
-                      />
-                    </div>
-                    <div className="grid gap-2">
-                      <Label htmlFor="role">Role</Label>
+                      <Label htmlFor="role">User Type</Label>
                       <Select value={newUser.role} onValueChange={handleRoleChange}>
                         <SelectTrigger>
                           <SelectValue placeholder="Select a role" />
@@ -216,50 +276,144 @@ const UserManagement = () => {
                           <SelectItem value="super-admin">Super Admin</SelectItem>
                           <SelectItem value="admin">Admin</SelectItem>
                           <SelectItem value="technician">Technician</SelectItem>
+                          <SelectItem value="external-technician">External Technician</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
+                    
                     <div className="grid gap-2">
-                      <Label htmlFor="password">Password</Label>
+                      <Label htmlFor="name">
+                        {newUser.role === 'external-technician' ? 'Business/Technician Name' : 'Full Name'}
+                      </Label>
                       <Input
-                        id="password"
-                        name="password"
-                        type="password"
-                        value={newUser.password}
+                        id="name"
+                        name="name"
+                        placeholder={newUser.role === 'external-technician' ? "ABC Repair Shop" : "John Doe"}
+                        value={newUser.name}
                         onChange={handleInputChange}
                       />
                     </div>
+                    
+                    {newUser.role === 'external-technician' && (
+                      <div className="grid gap-2">
+                        <Label htmlFor="company">Company Name</Label>
+                        <Input
+                          id="company"
+                          name="company"
+                          placeholder="Company Name (optional)"
+                          value={newUser.company}
+                          onChange={handleInputChange}
+                        />
+                      </div>
+                    )}
+                    
                     <div className="grid gap-2">
-                      <Label htmlFor="confirmPassword">Confirm Password</Label>
+                      <Label htmlFor="email">Email</Label>
                       <Input
-                        id="confirmPassword"
-                        name="confirmPassword"
-                        type="password"
-                        value={newUser.confirmPassword}
+                        id="email"
+                        name="email"
+                        type="email"
+                        placeholder="email@example.com"
+                        value={newUser.email}
                         onChange={handleInputChange}
                       />
                     </div>
+                    
+                    <div className="grid gap-2">
+                      <Label htmlFor="phone">Phone Number</Label>
+                      <Input
+                        id="phone"
+                        name="phone"
+                        placeholder="555-123-4567"
+                        value={newUser.phone}
+                        onChange={handleInputChange}
+                      />
+                    </div>
+                    
+                    {newUser.role === 'external-technician' && (
+                      <div className="grid gap-2">
+                        <Label htmlFor="specialties">Specialties</Label>
+                        <Input
+                          id="specialties"
+                          name="specialties"
+                          placeholder="Screen Repair, Water Damage, etc. (comma separated)"
+                          value={newUser.specialties}
+                          onChange={handleInputChange}
+                        />
+                      </div>
+                    )}
+                    
+                    <div className="flex items-center space-x-2">
+                      <Switch 
+                        id="canLogin" 
+                        checked={newUser.canLogin}
+                        onCheckedChange={handleSwitchChange}
+                        disabled={newUser.role === 'super-admin' || newUser.role === 'admin'}
+                      />
+                      <Label htmlFor="canLogin">Can log in to the system</Label>
+                    </div>
+                    
+                    {newUser.canLogin && (
+                      <>
+                        <div className="grid gap-2">
+                          <Label htmlFor="password">Password</Label>
+                          <Input
+                            id="password"
+                            name="password"
+                            type="password"
+                            value={newUser.password}
+                            onChange={handleInputChange}
+                          />
+                        </div>
+                        <div className="grid gap-2">
+                          <Label htmlFor="confirmPassword">Confirm Password</Label>
+                          <Input
+                            id="confirmPassword"
+                            name="confirmPassword"
+                            type="password"
+                            value={newUser.confirmPassword}
+                            onChange={handleInputChange}
+                          />
+                        </div>
+                      </>
+                    )}
                   </div>
                   <DialogFooter>
                     <Button variant="outline" onClick={() => setIsCreateUserOpen(false)}>
                       Cancel
                     </Button>
                     <Button className="bg-repairam hover:bg-repairam-dark" onClick={handleCreateUser}>
-                      Create User
+                      {newUser.role === 'external-technician' ? 'Add External Technician' : 'Create User'}
                     </Button>
                   </DialogFooter>
                 </DialogContent>
               </Dialog>
             </div>
           </div>
+          
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-4">
+            <TabsList className="grid w-full sm:w-auto grid-cols-2">
+              <TabsTrigger value="internal" className="gap-2">
+                <Users className="h-4 w-4" />
+                <span>Internal Staff</span>
+              </TabsTrigger>
+              <TabsTrigger value="external" className="gap-2">
+                <ExternalLink className="h-4 w-4" />
+                <span>External Technicians</span>
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
         </CardHeader>
         <CardContent>
           <Table>
             <TableHeader>
               <TableRow>
                 <TableHead>Name</TableHead>
+                {activeTab === 'external' && <TableHead>Company</TableHead>}
                 <TableHead>Email</TableHead>
+                <TableHead>Phone</TableHead>
                 <TableHead>Role</TableHead>
+                {activeTab === 'external' && <TableHead>Specialties</TableHead>}
                 <TableHead>Created</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
@@ -270,12 +424,23 @@ const UserManagement = () => {
                 filteredUsers.map((user) => (
                   <TableRow key={user.id}>
                     <TableCell className="font-medium">{user.name}</TableCell>
+                    {activeTab === 'external' && <TableCell>{user.company || 'N/A'}</TableCell>}
                     <TableCell>{user.email}</TableCell>
+                    <TableCell>{user.phone || 'N/A'}</TableCell>
                     <TableCell>
                       <Badge className={getRoleBadgeColor(user.role)}>
-                        {user.role.charAt(0).toUpperCase() + user.role.slice(1)}
+                        {formatRoleName(user.role)}
                       </Badge>
                     </TableCell>
+                    {activeTab === 'external' && (
+                      <TableCell>
+                        {user.specialties?.map((specialty, index) => (
+                          <Badge key={index} variant="outline" className="mr-1 mb-1">
+                            {specialty}
+                          </Badge>
+                        )) || 'None'}
+                      </TableCell>
+                    )}
                     <TableCell>{user.createdAt.toLocaleDateString()}</TableCell>
                     <TableCell>
                       <Badge variant={user.active ? "default" : "outline"}>
@@ -296,8 +461,8 @@ const UserManagement = () => {
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={6} className="h-24 text-center">
-                    No users found
+                  <TableCell colSpan={activeTab === 'external' ? 9 : 7} className="h-24 text-center">
+                    No {activeTab === 'external' ? 'external technicians' : 'users'} found
                   </TableCell>
                 </TableRow>
               )}
