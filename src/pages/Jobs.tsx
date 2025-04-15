@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { PlusCircle, Search, Filter, MoreHorizontal, Clipboard, Bell, FileText, Tag, Calendar, MapPin, Flag, CalendarDays, UserRound, ListFilter } from 'lucide-react';
+import { PlusCircle, Search, Filter, MoreHorizontal, Clipboard, Bell, FileText, Tag, Calendar, MapPin, Flag, CalendarDays, UserRound, ListFilter, ClipboardList } from 'lucide-react';
 import { 
   DropdownMenu,
   DropdownMenuContent,
@@ -41,6 +41,7 @@ import { Label } from "@/components/ui/label";
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useLocalStorage } from '@/hooks/use-local-storage';
 import { cn } from "@/lib/utils";
+import { Textarea } from '@/components/ui/textarea';
 
 const initialJobs = [
   {
@@ -148,6 +149,10 @@ const Jobs = () => {
   const [jobDetailsDialogOpen, setJobDetailsDialogOpen] = useState(false);
   const [jobToView, setJobToView] = useState<typeof initialJobs[0] | null>(null);
   const [localCustomers, setLocalCustomers] = useLocalStorage('repair-app-customers', []);
+  const [statusUpdateDialogOpen, setStatusUpdateDialogOpen] = useState(false);
+  const [jobToUpdate, setJobToUpdate] = useState<null | typeof initialJobs[0]>(null);
+  const [newStatus, setNewStatus] = useState('');
+  const [statusUpdateNote, setStatusUpdateNote] = useState('');
   const dialogRef = useRef<HTMLDivElement>(null);
 
   const technicians = React.useMemo(() => {
@@ -423,17 +428,63 @@ const Jobs = () => {
     navigate(`/jobs?jobId=${job.id}`, { replace: true });
   }, [navigate]);
 
+  const openStatusUpdateDialog = (job: typeof initialJobs[0]) => {
+    setJobToUpdate(job);
+    setNewStatus(job.status);
+    setStatusUpdateNote('');
+    setStatusUpdateDialogOpen(true);
+  };
+
+  const handleStatusUpdateSubmit = () => {
+    if (!jobToUpdate || newStatus === jobToUpdate.status) return;
+    
+    const updatedJobs = localJobs.map(job => 
+      job.id === jobToUpdate.id 
+        ? { ...job, status: newStatus } 
+        : job
+    );
+    
+    setLocalJobs(updatedJobs);
+    setStatusUpdateDialogOpen(false);
+    
+    toast({
+      title: "Status Updated",
+      description: `Job ${jobToUpdate.id} status changed to ${newStatus.replace('-', ' ')}`,
+    });
+    
+    if (newStatus === 'ready-for-delivery' || newStatus === 'completed') {
+      try {
+        sendEmailNotification(jobToUpdate.customerEmail, jobToUpdate.id, newStatus);
+        toast({
+          title: "Email Notification Sent",
+          description: `Customer has been notified about status change for job ${jobToUpdate.id}`,
+        });
+      } catch (error) {
+        toast({
+          title: "Email Failed",
+          description: "Failed to send email notification to customer",
+          variant: "destructive"
+        });
+      }
+    }
+    
+    setJobToUpdate(null);
+  };
+
+  const handleViewRepairLog = (jobId: string) => {
+    navigate(`/repair-log?jobId=${jobId}`);
+  };
+
   const handleMenuAction = useCallback((action: string, job: typeof initialJobs[0]) => {
     switch (action) {
       case 'view-details':
         handleViewDetails(job);
         break;
       case 'update-status':
-        setActiveJob(job.id);
-        toast({
-          title: "Status Update",
-          description: "Please select a new status for this job",
-        });
+        openStatusUpdateDialog(job);
+        break;
+      case 'view-repair-log':
+        handleViewRepairLog(job.id);
         break;
       case 'add-parts':
         toast({
@@ -721,6 +772,9 @@ const Jobs = () => {
                               <DropdownMenuItem onClick={() => handleMenuAction('update-status', job)}>
                                 Update Status
                               </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => handleMenuAction('view-repair-log', job)}>
+                                View Repair Log
+                              </DropdownMenuItem>
                               <DropdownMenuSeparator />
                               <DropdownMenuItem onClick={() => handleMenuAction('add-parts', job)}>
                                 Add Parts
@@ -991,8 +1045,15 @@ const Jobs = () => {
                 <JobPrintables job={jobToView} />
               </div>
               <div className="flex gap-2">
+                <Button 
+                  variant="outline" 
+                  onClick={() => handleMenuAction('view-repair-log', jobToView)}
+                >
+                  <ClipboardList className="h-4 w-4 mr-2" />
+                  View Repair Log
+                </Button>
                 <Button variant="outline" onClick={() => {
-                  handleMenuAction('update-status', jobToView);
+                  openStatusUpdateDialog(jobToView);
                   safeCloseJobDetailsDialog();
                 }}>
                   Update Status
@@ -1006,6 +1067,54 @@ const Jobs = () => {
             </DialogFooter>
           </DialogContent>
         )}
+      </Dialog>
+
+      <Dialog open={statusUpdateDialogOpen} onOpenChange={setStatusUpdateDialogOpen}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Update Job Status</DialogTitle>
+            <DialogDescription>
+              Change the status of job {jobToUpdate?.id} and add notes about this update.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="space-y-2">
+              <Label>New Status</Label>
+              <Select 
+                value={newStatus} 
+                onValueChange={setNewStatus}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select new status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="picked-up">Picked Up</SelectItem>
+                  <SelectItem value="received">Received</SelectItem>
+                  <SelectItem value="diagnosis">Under Diagnosis</SelectItem>
+                  <SelectItem value="repair-in-progress">Repair In Progress</SelectItem>
+                  <SelectItem value="repair-completed">Repair Completed</SelectItem>
+                  <SelectItem value="stress-test">Stress Test</SelectItem>
+                  <SelectItem value="ready-for-delivery">Ready for Delivery</SelectItem>
+                  <SelectItem value="delivered">Delivered</SelectItem>
+                  <SelectItem value="completed">Completed</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Update Notes</Label>
+              <Textarea
+                placeholder="Add notes about this status change..."
+                value={statusUpdateNote}
+                onChange={(e) => setStatusUpdateNote(e.target.value)}
+                rows={4}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setStatusUpdateDialogOpen(false)}>Cancel</Button>
+            <Button onClick={handleStatusUpdateSubmit}>Update Status</Button>
+          </DialogFooter>
+        </DialogContent>
       </Dialog>
     </div>
   );

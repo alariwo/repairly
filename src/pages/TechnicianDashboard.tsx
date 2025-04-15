@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { ClipboardCheck, Upload, MessageSquare, Image, Save, Filter, Search } from 'lucide-react';
+import { ClipboardCheck, Upload, MessageSquare, Image, Save, Filter, Search, UserRound, RefreshCw } from 'lucide-react';
 import {
   Table,
   TableBody,
@@ -22,14 +22,13 @@ import {
 import { useToast } from '@/components/ui/use-toast';
 import { Badge } from '@/components/ui/badge';
 import { JobPrintables } from '@/components/jobs/JobPrintables';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 
-// Demo user data - in a real app, this would come from authentication
 const currentTechnician = {
   id: 'tech-001',
   name: 'Mike Technician',
 };
 
-// Demo data - in a real app, this would come from an API call
 const technicianJobs = [
   {
     id: 'JOB-1001',
@@ -75,6 +74,12 @@ const technicianJobs = [
   },
 ];
 
+const otherTechnicians = [
+  { id: 'tech-002', name: 'Lisa Technician' },
+  { id: 'tech-003', name: 'John Technician' },
+  { id: 'tech-004', name: 'Sarah Technician' },
+];
+
 const TechnicianDashboard = () => {
   const { toast } = useToast();
   const [jobs, setJobs] = useState(technicianJobs);
@@ -83,15 +88,19 @@ const TechnicianDashboard = () => {
   const [selectedJob, setSelectedJob] = useState<null | typeof technicianJobs[0]>(null);
   const [jobNotes, setJobNotes] = useState('');
   const [jobStatus, setJobStatus] = useState('');
+  const [isReassignDialogOpen, setIsReassignDialogOpen] = useState(false);
+  const [reassignment, setReassignment] = useState({
+    technicianRole: 'internal' as 'internal' | 'external',
+    technician: '',
+    notes: '',
+    cost: 0
+  });
 
-  // Filter jobs based on search term and status
   const filteredJobs = jobs.filter(job => {
-    // Apply status filter
     if (statusFilter !== 'all' && job.status !== statusFilter) {
       return false;
     }
     
-    // Apply search term including serial number
     return (
       job.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
       job.deviceType.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -105,7 +114,6 @@ const TechnicianDashboard = () => {
     setJobNotes(job.notes);
     setJobStatus(job.status);
     
-    // Added toast notification for job selection
     toast({
       title: "Job Selected",
       description: `You are now editing job ${job.id}`,
@@ -115,7 +123,6 @@ const TechnicianDashboard = () => {
   const handleJobUpdate = () => {
     if (!selectedJob) return;
     
-    // Update job in the local state
     const updatedJobs = jobs.map(job => 
       job.id === selectedJob.id 
         ? { ...job, notes: jobNotes, status: jobStatus } 
@@ -123,7 +130,6 @@ const TechnicianDashboard = () => {
     );
     setJobs(updatedJobs);
     
-    // Notify admin if job is completed
     if (jobStatus === 'repair-completed' || jobStatus === 'ready-for-delivery') {
       toast({
         title: "Admin Notification Sent",
@@ -131,7 +137,6 @@ const TechnicianDashboard = () => {
       });
     }
     
-    // Clear selection and show success message
     setSelectedJob(null);
     toast({
       title: "Job Updated",
@@ -140,7 +145,6 @@ const TechnicianDashboard = () => {
   };
 
   const handleFileUpload = (type: 'before' | 'after') => {
-    // Trigger file upload dialog and handle file selection
     const input = document.createElement('input');
     input.type = 'file';
     input.accept = 'image/*';
@@ -176,6 +180,29 @@ const TechnicianDashboard = () => {
       }
     };
     input.click();
+  };
+
+  const handleReassignJob = () => {
+    if (!selectedJob) return;
+    
+    toast({
+      title: "Job Reassigned",
+      description: reassignment.technicianRole === 'internal' 
+        ? `Job ${selectedJob.id} has been reassigned to ${reassignment.technician}.`
+        : `Job ${selectedJob.id} has been sent to external provider with notes.`,
+    });
+    
+    const updatedJobs = jobs.filter(job => job.id !== selectedJob.id);
+    setJobs(updatedJobs);
+    setSelectedJob(null);
+    setIsReassignDialogOpen(false);
+    
+    setReassignment({
+      technicianRole: 'internal' as 'internal' | 'external',
+      technician: '',
+      notes: '',
+      cost: 0
+    });
   };
 
   const getStatusBadge = (status: string) => {
@@ -352,6 +379,15 @@ const TechnicianDashboard = () => {
                     rows={4}
                   />
                 </div>
+                <div className="pt-3">
+                  <Button 
+                    variant="outline"
+                    className="w-full"
+                    onClick={() => setIsReassignDialogOpen(true)}
+                  >
+                    <UserRound className="mr-2 h-4 w-4" /> Reassign Job
+                  </Button>
+                </div>
               </div>
               
               <div className="space-y-4">
@@ -424,6 +460,86 @@ const TechnicianDashboard = () => {
           </CardContent>
         </Card>
       )}
+
+      <Dialog open={isReassignDialogOpen} onOpenChange={setIsReassignDialogOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Reassign Job {selectedJob?.id}</DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Reassign To</label>
+              <Select
+                value={reassignment.technicianRole}
+                onValueChange={(value: 'internal' | 'external') => 
+                  setReassignment(prev => ({ ...prev, technicianRole: value }))}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select option" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="internal">Internal Technician</SelectItem>
+                  <SelectItem value="external">External Provider</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {reassignment.technicianRole === 'internal' ? (
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Select Technician</label>
+                <Select
+                  value={reassignment.technician}
+                  onValueChange={(value) => setReassignment(prev => ({ ...prev, technician: value }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Choose technician" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {otherTechnicians.map(tech => (
+                      <SelectItem key={tech.id} value={tech.name}>{tech.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <label className="text-sm font-medium">External Provider Details</label>
+                <Input
+                  placeholder="Provider name"
+                  value={reassignment.technician}
+                  onChange={(e) => setReassignment(prev => ({ ...prev, technician: e.target.value }))}
+                />
+                {reassignment.technicianRole === 'external' && (
+                  <div className="pt-2">
+                    <label className="text-sm font-medium">Estimated Cost</label>
+                    <Input
+                      type="number"
+                      placeholder="0.00"
+                      value={reassignment.cost || ''}
+                      onChange={(e) => setReassignment(prev => ({ ...prev, cost: parseFloat(e.target.value) || 0 }))}
+                      className="mt-1"
+                    />
+                  </div>
+                )}
+              </div>
+            )}
+            
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Notes for Reassignment</label>
+              <Textarea
+                placeholder="Explain why this job is being reassigned..."
+                value={reassignment.notes}
+                onChange={(e) => setReassignment(prev => ({ ...prev, notes: e.target.value }))}
+                rows={3}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsReassignDialogOpen(false)}>Cancel</Button>
+            <Button onClick={handleReassignJob}>Reassign Job</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
