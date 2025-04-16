@@ -8,15 +8,6 @@ import { ExternalTechnicianWorkForm } from '@/components/technician/ExternalTech
 import { sendEmailWithAttachments } from '@/utils/notifications';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { UserRound, ExternalLink } from 'lucide-react';
-import { PartsSelector } from '@/components/parts/PartsSelector';
-import { Button } from '@/components/ui/button';
-import { 
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter
-} from '@/components/ui/dialog';
 
 const currentTechnician = {
   id: 'tech-001',
@@ -109,8 +100,6 @@ const TechnicianDashboard = () => {
   const [activeTab, setActiveTab] = useState('internal');
   const [showExternalForm, setShowExternalForm] = useState(false);
   const [selectedExternalJob, setSelectedExternalJob] = useState<null | typeof externalTechAssignments[0]>(null);
-  const [isPartsDialogOpen, setIsPartsDialogOpen] = useState(false);
-  const [jobForParts, setJobForParts] = useState<null | typeof technicianJobs[0]>(null);
 
   const isExternalTechnician = currentTechnician.isExternal;
 
@@ -285,11 +274,6 @@ const TechnicianDashboard = () => {
     });
   };
 
-  const handleOpenPartsDialog = (job: typeof technicianJobs[0]) => {
-    setJobForParts(job);
-    setIsPartsDialogOpen(true);
-  };
-
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
@@ -401,29 +385,6 @@ const TechnicianDashboard = () => {
         otherTechnicians={otherTechnicians}
         onReassign={handleJobReassign}
       />
-
-      <Dialog open={isPartsDialogOpen} onOpenChange={setIsPartsDialogOpen}>
-        <DialogContent className="sm:max-w-[700px]">
-          <DialogHeader>
-            <DialogTitle>Add Parts to Job</DialogTitle>
-          </DialogHeader>
-          
-          {jobForParts && (
-            <PartsSelector 
-              jobId={jobForParts.id} 
-              customerName={jobForParts.customer}
-              technicianId={currentTechnician.id}
-              technicianName={currentTechnician.name}
-            />
-          )}
-          
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsPartsDialogOpen(false)}>
-              Close
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 };

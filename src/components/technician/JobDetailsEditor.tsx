@@ -1,6 +1,6 @@
 
-import React, { useState } from 'react';
-import { Save, Upload, Image, UserRound, Mail, Package } from 'lucide-react';
+import React from 'react';
+import { Save, Upload, Image, UserRound, Mail } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -12,8 +12,6 @@ import {
 } from "@/components/ui/select";
 import { useToast } from '@/hooks/use-toast';
 import { sendEmailNotification } from '@/utils/notifications';
-import { PartsSelector } from '@/components/parts/PartsSelector';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 
 type Job = {
   id: string;
@@ -50,7 +48,6 @@ export const JobDetailsEditor = ({
   const [jobNotes, setJobNotes] = React.useState(job.notes);
   const [jobStatus, setJobStatus] = React.useState(job.status);
   const [isNotifying, setIsNotifying] = React.useState(false);
-  const [isPartsDialogOpen, setIsPartsDialogOpen] = useState(false);
 
   const handleSave = () => {
     onUpdate({ 
@@ -130,165 +127,134 @@ export const JobDetailsEditor = ({
   };
 
   return (
-    <>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div className="space-y-4">
-          <div>
-            <label className="text-sm font-medium">Device</label>
-            <div className="mt-1">{job.deviceType}</div>
-          </div>
-          <div>
-            <label className="text-sm font-medium">Serial Number</label>
-            <div className="mt-1 font-mono text-sm">{job.serialNumber || 'Not provided'}</div>
-          </div>
-          <div>
-            <label className="text-sm font-medium">Issue</label>
-            <div className="mt-1">{job.issue}</div>
-          </div>
-          <div>
-            <label className="text-sm font-medium">Status</label>
-            <Select 
-              value={jobStatus} 
-              onValueChange={setJobStatus}
-            >
-              <SelectTrigger className="w-full mt-1">
-                <SelectValue placeholder="Update status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="diagnosis">Diagnosis</SelectItem>
-                <SelectItem value="repair-in-progress">Repair In Progress</SelectItem>
-                <SelectItem value="repair-completed">Repair Completed</SelectItem>
-                <SelectItem value="stress-test">Stress Test</SelectItem>
-                <SelectItem value="ready-for-delivery">Ready for Delivery</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <div>
-            <label className="text-sm font-medium">Notes</label>
-            <Textarea 
-              placeholder="Describe the work done..." 
-              className="mt-1"
-              value={jobNotes}
-              onChange={(e) => setJobNotes(e.target.value)}
-              rows={4}
-            />
-          </div>
-          <div className="flex space-x-2 pt-3">
-            <Button 
-              variant="outline"
-              className="flex-1"
-              onClick={onReassign}
-            >
-              <UserRound className="mr-2 h-4 w-4" /> Reassign Job
-            </Button>
-            
-            <Button 
-              variant="secondary"
-              className="flex-1"
-              onClick={handleNotifyCustomer}
-              disabled={isNotifying || !job.customerEmail}
-            >
-              <Mail className="mr-2 h-4 w-4" /> Notify Customer
-            </Button>
-            
-            <Button 
-              variant="outline"
-              className="gap-1"
-              onClick={() => setIsPartsDialogOpen(true)}
-            >
-              <Package className="h-4 w-4" /> Add Parts
-            </Button>
-          </div>
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div className="space-y-4">
+        <div>
+          <label className="text-sm font-medium">Device</label>
+          <div className="mt-1">{job.deviceType}</div>
         </div>
-        
-        <div className="space-y-4">
-          <div>
-            <label className="text-sm font-medium">Images</label>
-            <div className="mt-2 grid grid-cols-2 gap-4">
-              <div className="border rounded-md p-4">
-                <div className="flex justify-between items-center mb-2">
-                  <span className="text-sm font-medium">Before</span>
-                  <Button 
-                    variant="outline" 
-                    size="sm"
-                    onClick={() => handleFileUpload('before')}
-                  >
-                    <Upload className="h-4 w-4 mr-1" /> Upload
-                  </Button>
-                </div>
-                <div className="h-32 bg-gray-100 rounded-md flex items-center justify-center">
-                  {job.beforeImages.length > 0 ? (
-                    <div className="text-sm">
-                      {job.beforeImages.length} image(s) uploaded
-                    </div>
-                  ) : (
-                    <Image className="h-8 w-8 text-gray-400" />
-                  )}
-                </div>
+        <div>
+          <label className="text-sm font-medium">Serial Number</label>
+          <div className="mt-1 font-mono text-sm">{job.serialNumber || 'Not provided'}</div>
+        </div>
+        <div>
+          <label className="text-sm font-medium">Issue</label>
+          <div className="mt-1">{job.issue}</div>
+        </div>
+        <div>
+          <label className="text-sm font-medium">Status</label>
+          <Select 
+            value={jobStatus} 
+            onValueChange={setJobStatus}
+          >
+            <SelectTrigger className="w-full mt-1">
+              <SelectValue placeholder="Update status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="diagnosis">Diagnosis</SelectItem>
+              <SelectItem value="repair-in-progress">Repair In Progress</SelectItem>
+              <SelectItem value="repair-completed">Repair Completed</SelectItem>
+              <SelectItem value="stress-test">Stress Test</SelectItem>
+              <SelectItem value="ready-for-delivery">Ready for Delivery</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div>
+          <label className="text-sm font-medium">Notes</label>
+          <Textarea 
+            placeholder="Describe the work done..." 
+            className="mt-1"
+            value={jobNotes}
+            onChange={(e) => setJobNotes(e.target.value)}
+            rows={4}
+          />
+        </div>
+        <div className="flex space-x-2 pt-3">
+          <Button 
+            variant="outline"
+            className="flex-1"
+            onClick={onReassign}
+          >
+            <UserRound className="mr-2 h-4 w-4" /> Reassign Job
+          </Button>
+          
+          <Button 
+            variant="secondary"
+            className="flex-1"
+            onClick={handleNotifyCustomer}
+            disabled={isNotifying || !job.customerEmail}
+          >
+            <Mail className="mr-2 h-4 w-4" /> Notify Customer
+          </Button>
+        </div>
+      </div>
+      
+      <div className="space-y-4">
+        <div>
+          <label className="text-sm font-medium">Images</label>
+          <div className="mt-2 grid grid-cols-2 gap-4">
+            <div className="border rounded-md p-4">
+              <div className="flex justify-between items-center mb-2">
+                <span className="text-sm font-medium">Before</span>
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => handleFileUpload('before')}
+                >
+                  <Upload className="h-4 w-4 mr-1" /> Upload
+                </Button>
               </div>
-              
-              <div className="border rounded-md p-4">
-                <div className="flex justify-between items-center mb-2">
-                  <span className="text-sm font-medium">After</span>
-                  <Button 
-                    variant="outline" 
-                    size="sm"
-                    onClick={() => handleFileUpload('after')}
-                  >
-                    <Upload className="h-4 w-4 mr-1" /> Upload
-                  </Button>
-                </div>
-                <div className="h-32 bg-gray-100 rounded-md flex items-center justify-center">
-                  {job.afterImages.length > 0 ? (
-                    <div className="text-sm">
-                      {job.afterImages.length} image(s) uploaded
-                    </div>
-                  ) : (
-                    <Image className="h-8 w-8 text-gray-400" />
-                  )}
-                </div>
+              <div className="h-32 bg-gray-100 rounded-md flex items-center justify-center">
+                {job.beforeImages.length > 0 ? (
+                  <div className="text-sm">
+                    {job.beforeImages.length} image(s) uploaded
+                  </div>
+                ) : (
+                  <Image className="h-8 w-8 text-gray-400" />
+                )}
+              </div>
+            </div>
+            
+            <div className="border rounded-md p-4">
+              <div className="flex justify-between items-center mb-2">
+                <span className="text-sm font-medium">After</span>
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => handleFileUpload('after')}
+                >
+                  <Upload className="h-4 w-4 mr-1" /> Upload
+                </Button>
+              </div>
+              <div className="h-32 bg-gray-100 rounded-md flex items-center justify-center">
+                {job.afterImages.length > 0 ? (
+                  <div className="text-sm">
+                    {job.afterImages.length} image(s) uploaded
+                  </div>
+                ) : (
+                  <Image className="h-8 w-8 text-gray-400" />
+                )}
               </div>
             </div>
           </div>
-          
-          <div className="pt-6">
-            <Button 
-              className="w-full bg-repairam hover:bg-repairam-dark"
-              onClick={handleSave}
-            >
-              <Save className="mr-2 h-4 w-4" /> Save Changes
-            </Button>
-            <Button 
-              variant="outline" 
-              className="w-full mt-2"
-              onClick={onCancel}
-            >
-              Cancel
-            </Button>
-          </div>
+        </div>
+        
+        <div className="pt-6">
+          <Button 
+            className="w-full bg-repairam hover:bg-repairam-dark"
+            onClick={handleSave}
+          >
+            <Save className="mr-2 h-4 w-4" /> Save Changes
+          </Button>
+          <Button 
+            variant="outline" 
+            className="w-full mt-2"
+            onClick={onCancel}
+          >
+            Cancel
+          </Button>
         </div>
       </div>
-
-      <Dialog open={isPartsDialogOpen} onOpenChange={setIsPartsDialogOpen}>
-        <DialogContent className="sm:max-w-[700px]">
-          <DialogHeader>
-            <DialogTitle>Add Parts to Job</DialogTitle>
-          </DialogHeader>
-          
-          <PartsSelector 
-            jobId={job.id} 
-            customerName={job.customer}
-            technicianId="tech-001"
-            technicianName="Mike Technician"
-          />
-          
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsPartsDialogOpen(false)}>
-              Close
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </>
+    </div>
   );
 };
