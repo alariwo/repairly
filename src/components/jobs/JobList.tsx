@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { MoreHorizontal, Search } from 'lucide-react';
+import { MoreHorizontal, Search, UserCheck, ClipboardCheck, FileText, Bell } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { 
@@ -20,7 +20,7 @@ import {
 import { JobStatusBadge } from './JobStatusBadge';
 import { JobPriorityBadge } from './JobPriorityBadge';
 import { JobPrintables } from './JobPrintables';
-import { Bell, FileText } from 'lucide-react';
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 export interface Job {
   id: string;
@@ -121,80 +121,112 @@ export const JobList: React.FC<JobListProps> = ({
         </div>
       </div>
       
-      {/* Jobs Table */}
-      <div className="border rounded-md overflow-hidden"> {/* Added overflow-hidden to ensure actions are contained */}
-        <table className="w-full">
-          <thead>
-            <tr className="border-b bg-muted/50">
-              <th className="text-left h-12 px-4 align-middle font-medium">Job ID</th>
-              <th className="text-left h-12 px-4 align-middle font-medium">Customer</th>
-              <th className="text-left h-12 px-4 align-middle font-medium">Device</th>
-              <th className="text-left h-12 px-4 align-middle font-medium">Status</th>
-              <th className="text-left h-12 px-4 align-middle font-medium">Priority</th>
-              <th className="text-left h-12 px-4 align-middle font-medium">Due Date</th>
-              <th className="text-left h-12 px-4 align-middle font-medium">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filteredJobs.map(job => (
-              <tr key={job.id} className="border-b hover:bg-muted/50">
-                <td className="p-4 align-middle">
-                  <div className="flex items-center space-x-2">
-                    {job.hasNotification && (
-                      <span className="relative h-2 w-2">
-                        <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-400 opacity-75"></span>
-                        <span className="relative inline-flex h-2 w-2 rounded-full bg-red-500"></span>
-                      </span>
-                    )}
-                    <span className="font-medium">{job.id}</span>
-                  </div>
-                </td>
-                <td className="p-4 align-middle">{job.customer}</td>
-                <td className="p-4 align-middle">
-                  <div className="font-medium">{job.device}</div>
-                  <div className="text-sm text-muted-foreground">{job.issue}</div>
-                </td>
-                <td className="p-4 align-middle"><JobStatusBadge status={job.status} /></td>
-                <td className="p-4 align-middle"><JobPriorityBadge priority={job.priority} /></td>
-                <td className="p-4 align-middle">{job.dueDate}</td>
-                <td className="p-4 align-middle">
-                  <div className="flex items-center gap-2">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => onViewDetails(job)}
-                    >
-                      View Details
-                    </Button>
-                    <JobPrintables job={job} />
-                    
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon">
-                          <MoreHorizontal className="h-4 w-4" />
+      {/* Jobs Table with ScrollArea for horizontal scrolling */}
+      <div className="border rounded-md">
+        <ScrollArea className="h-full w-full">
+          <div className="min-w-[900px]">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b bg-muted/50">
+                  <th className="text-left h-12 px-4 align-middle font-medium">Job ID</th>
+                  <th className="text-left h-12 px-4 align-middle font-medium">Customer</th>
+                  <th className="text-left h-12 px-4 align-middle font-medium">Device</th>
+                  <th className="text-left h-12 px-4 align-middle font-medium">Status</th>
+                  <th className="text-left h-12 px-4 align-middle font-medium">Priority</th>
+                  <th className="text-left h-12 px-4 align-middle font-medium">Due Date</th>
+                  <th className="text-left h-12 px-4 align-middle font-medium">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredJobs.map(job => (
+                  <tr key={job.id} className="border-b hover:bg-muted/50">
+                    <td className="p-4 align-middle">
+                      <div className="flex items-center space-x-2">
+                        {job.hasNotification && (
+                          <span className="relative h-2 w-2">
+                            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-400 opacity-75"></span>
+                            <span className="relative inline-flex h-2 w-2 rounded-full bg-red-500"></span>
+                          </span>
+                        )}
+                        <span className="font-medium">{job.id}</span>
+                      </div>
+                    </td>
+                    <td className="p-4 align-middle">{job.customer}</td>
+                    <td className="p-4 align-middle">
+                      <div className="font-medium">{job.device}</div>
+                      <div className="text-sm text-muted-foreground">{job.issue}</div>
+                    </td>
+                    <td className="p-4 align-middle"><JobStatusBadge status={job.status} /></td>
+                    <td className="p-4 align-middle"><JobPriorityBadge priority={job.priority} /></td>
+                    <td className="p-4 align-middle">{job.dueDate}</td>
+                    <td className="p-4 align-middle">
+                      <div className="flex items-center gap-2">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => onViewDetails(job)}
+                        >
+                          View Details
                         </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem className="gap-2">
-                          <Bell className="h-4 w-4" />
-                          Notify Customer
-                        </DropdownMenuItem>
-                        <DropdownMenuItem className="gap-2">
+                        
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="flex items-center gap-1"
+                        >
+                          <UserCheck className="h-4 w-4" />
+                          Assign
+                        </Button>
+                        
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="flex items-center gap-1"
+                        >
+                          <ClipboardCheck className="h-4 w-4" />
+                          Status
+                        </Button>
+                        
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="flex items-center gap-1"
+                        >
                           <FileText className="h-4 w-4" />
-                          Create Invoice
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem className="gap-2 text-red-600">
-                          Cancel Job
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+                          Log
+                        </Button>
+                        
+                        <JobPrintables job={job} />
+                        
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon">
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem className="gap-2">
+                              <Bell className="h-4 w-4" />
+                              Notify Customer
+                            </DropdownMenuItem>
+                            <DropdownMenuItem className="gap-2">
+                              <FileText className="h-4 w-4" />
+                              Create Invoice
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem className="gap-2 text-red-600">
+                              Cancel Job
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </ScrollArea>
         
         {filteredJobs.length === 0 && (
           <div className="p-4 text-center text-muted-foreground">
