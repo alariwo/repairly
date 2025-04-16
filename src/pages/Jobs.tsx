@@ -1,9 +1,8 @@
-
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { PlusCircle, Search, Filter, MoreHorizontal, Clipboard, Bell, FileText, Tag, Calendar, MapPin, Flag, CalendarDays, UserRound, ListFilter, ClipboardList } from 'lucide-react';
+import { PlusCircle, Search, Filter, MoreHorizontal, Clipboard, Bell, FileText, Tag, Calendar, MapPin, Flag, CalendarDays, UserRound, ListFilter, ClipboardList, Mail, Phone } from 'lucide-react';
 import { 
   DropdownMenu,
   DropdownMenuContent,
@@ -134,17 +133,14 @@ const Jobs = () => {
   const { toast } = useToast();
   
   const filteredJobs = jobs.filter(job => {
-    // Filter by search term
     const matchesSearch = 
       job.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
       job.customer.toLowerCase().includes(searchTerm.toLowerCase()) ||
       job.device.toLowerCase().includes(searchTerm.toLowerCase()) ||
       job.issue.toLowerCase().includes(searchTerm.toLowerCase());
     
-    // Filter by status
     const matchesStatus = statusFilter === 'all' || job.status === statusFilter;
     
-    // Filter by priority
     const matchesPriority = priorityFilter === 'all' || job.priority === priorityFilter;
     
     return matchesSearch && matchesStatus && matchesPriority;
@@ -413,7 +409,10 @@ const Jobs = () => {
             <div className="mt-6">
               <h3 className="font-semibold mb-2">Parts Used</h3>
               <div className="border rounded-md p-4 space-y-2">
-                <PartsSelector jobId={selectedJob.id} />
+                <PartsSelector 
+                  jobId={selectedJob.id} 
+                  customerName={selectedJob.customer}
+                />
               </div>
             </div>
             
