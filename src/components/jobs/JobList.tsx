@@ -75,6 +75,7 @@ export const JobList: React.FC<JobListProps> = ({
 
   return (
     <div>
+      {/* Search and Filter Section */}
       <div className="flex flex-col md:flex-row gap-4 mb-6">
         <div className="relative flex-grow">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
@@ -96,7 +97,7 @@ export const JobList: React.FC<JobListProps> = ({
             <SelectContent>
               <SelectItem value="all">All Statuses</SelectItem>
               <SelectItem value="diagnosis">Diagnosis</SelectItem>
-              <SelectItem value="repair-in-progress">Repair in Progress</SelectItem>
+              <SelectItem value="repair-in-progress">Repair In Progress</SelectItem>
               <SelectItem value="repair-completed">Repair Completed</SelectItem>
               <SelectItem value="ready-for-delivery">Ready for Delivery</SelectItem>
               <SelectItem value="picked-up">Picked Up</SelectItem>
@@ -120,7 +121,8 @@ export const JobList: React.FC<JobListProps> = ({
         </div>
       </div>
       
-      <div className="border rounded-md">
+      {/* Jobs Table */}
+      <div className="border rounded-md overflow-hidden"> {/* Added overflow-hidden to ensure actions are contained */}
         <table className="w-full">
           <thead>
             <tr className="border-b bg-muted/50">
