@@ -16,6 +16,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
+  TableCell,
 } from '@/components/ui/table';
 import { InventoryItem } from './PartsSelector';
 import { InventoryItemRow } from './InventoryItemRow';

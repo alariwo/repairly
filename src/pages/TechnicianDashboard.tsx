@@ -9,6 +9,14 @@ import { sendEmailWithAttachments } from '@/utils/notifications';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { UserRound, ExternalLink } from 'lucide-react';
 import { PartsSelector } from '@/components/parts/PartsSelector';
+import { Button } from '@/components/ui/button';
+import { 
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter
+} from '@/components/ui/dialog';
 
 const currentTechnician = {
   id: 'tech-001',
