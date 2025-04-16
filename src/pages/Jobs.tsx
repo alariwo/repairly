@@ -4,7 +4,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { PlusCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import JobList, { Job } from '@/components/jobs/JobList';
+import JobList from '@/components/jobs/JobList';
+import { Job } from '@/components/jobs/JobTypes';
 import JobDetailsModal from '@/components/jobs/JobDetailsModal';
 import CreateJobModal from '@/components/jobs/CreateJobModal';
 

@@ -6,7 +6,7 @@ import { Calendar, Bell, FileText, UserRound, Mail, Phone } from 'lucide-react';
 import { PartsSelector } from '@/components/parts/PartsSelector';
 import { JobStatusBadge } from './JobStatusBadge';
 import { JobPriorityBadge } from './JobPriorityBadge';
-import { Job } from './JobList';
+import { Job } from './JobTypes';
 
 interface JobDetailsModalProps {
   job: Job | null;
