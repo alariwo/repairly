@@ -1,42 +1,8 @@
 
 import React from 'react';
-import { MoreHorizontal, Search, UserCheck, ClipboardCheck, FileText, Bell } from 'lucide-react';
-import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
-import { 
-  DropdownMenu, 
-  DropdownMenuContent, 
-  DropdownMenuItem, 
-  DropdownMenuSeparator, 
-  DropdownMenuTrigger 
-} from '@/components/ui/dropdown-menu';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { JobStatusBadge } from './JobStatusBadge';
-import { JobPriorityBadge } from './JobPriorityBadge';
-import { JobPrintables } from './JobPrintables';
-import { ScrollArea } from "@/components/ui/scroll-area";
-
-export interface Job {
-  id: string;
-  customer: string;
-  device: string;
-  issue: string;
-  status: string;
-  priority: string;
-  createdAt: string;
-  dueDate: string;
-  assignedTo: string;
-  hasNotification: boolean;
-  serialNumber: string;
-  customerEmail: string;
-  phoneNumber: string;
-}
+import { SearchAndFilter } from './SearchAndFilter';
+import { JobsTable } from './JobsTable';
+import { Job } from './JobTypes';
 
 interface JobListProps {
   jobs: Job[];
@@ -75,165 +41,19 @@ export const JobList: React.FC<JobListProps> = ({
 
   return (
     <div>
-      {/* Search and Filter Section */}
-      <div className="flex flex-col md:flex-row gap-4 mb-6">
-        <div className="relative flex-grow">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-          <Input
-            placeholder="Search jobs, customers, devices..."
-            value={searchTerm}
-            onChange={(e) => onSearchChange(e.target.value)}
-            className="pl-10"
-          />
-        </div>
-        <div className="flex gap-4">
-          <Select 
-            value={statusFilter} 
-            onValueChange={onStatusFilterChange}
-          >
-            <SelectTrigger className="w-[180px]">
-              <SelectValue placeholder="Filter by status" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Statuses</SelectItem>
-              <SelectItem value="diagnosis">Diagnosis</SelectItem>
-              <SelectItem value="repair-in-progress">Repair In Progress</SelectItem>
-              <SelectItem value="repair-completed">Repair Completed</SelectItem>
-              <SelectItem value="ready-for-delivery">Ready for Delivery</SelectItem>
-              <SelectItem value="picked-up">Picked Up</SelectItem>
-            </SelectContent>
-          </Select>
-          
-          <Select 
-            value={priorityFilter} 
-            onValueChange={onPriorityFilterChange}
-          >
-            <SelectTrigger className="w-[180px]">
-              <SelectValue placeholder="Filter by priority" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Priorities</SelectItem>
-              <SelectItem value="high">High</SelectItem>
-              <SelectItem value="medium">Medium</SelectItem>
-              <SelectItem value="low">Low</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
+      <SearchAndFilter 
+        searchTerm={searchTerm}
+        onSearchChange={onSearchChange}
+        statusFilter={statusFilter}
+        onStatusFilterChange={onStatusFilterChange}
+        priorityFilter={priorityFilter}
+        onPriorityFilterChange={onPriorityFilterChange}
+      />
       
-      {/* Jobs Table with ScrollArea for horizontal scrolling */}
-      <div className="border rounded-md">
-        <ScrollArea className="h-full w-full">
-          <div className="min-w-[900px]">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b bg-muted/50">
-                  <th className="text-left h-12 px-4 align-middle font-medium">Job ID</th>
-                  <th className="text-left h-12 px-4 align-middle font-medium">Customer</th>
-                  <th className="text-left h-12 px-4 align-middle font-medium">Device</th>
-                  <th className="text-left h-12 px-4 align-middle font-medium">Status</th>
-                  <th className="text-left h-12 px-4 align-middle font-medium">Priority</th>
-                  <th className="text-left h-12 px-4 align-middle font-medium">Due Date</th>
-                  <th className="text-left h-12 px-4 align-middle font-medium">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredJobs.map(job => (
-                  <tr key={job.id} className="border-b hover:bg-muted/50">
-                    <td className="p-4 align-middle">
-                      <div className="flex items-center space-x-2">
-                        {job.hasNotification && (
-                          <span className="relative h-2 w-2">
-                            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-400 opacity-75"></span>
-                            <span className="relative inline-flex h-2 w-2 rounded-full bg-red-500"></span>
-                          </span>
-                        )}
-                        <span className="font-medium">{job.id}</span>
-                      </div>
-                    </td>
-                    <td className="p-4 align-middle">{job.customer}</td>
-                    <td className="p-4 align-middle">
-                      <div className="font-medium">{job.device}</div>
-                      <div className="text-sm text-muted-foreground">{job.issue}</div>
-                    </td>
-                    <td className="p-4 align-middle"><JobStatusBadge status={job.status} /></td>
-                    <td className="p-4 align-middle"><JobPriorityBadge priority={job.priority} /></td>
-                    <td className="p-4 align-middle">{job.dueDate}</td>
-                    <td className="p-4 align-middle">
-                      <div className="flex items-center gap-2">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => onViewDetails(job)}
-                        >
-                          View Details
-                        </Button>
-                        
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="flex items-center gap-1"
-                        >
-                          <UserCheck className="h-4 w-4" />
-                          Assign
-                        </Button>
-                        
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="flex items-center gap-1"
-                        >
-                          <ClipboardCheck className="h-4 w-4" />
-                          Status
-                        </Button>
-                        
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="flex items-center gap-1"
-                        >
-                          <FileText className="h-4 w-4" />
-                          Log
-                        </Button>
-                        
-                        <JobPrintables job={job} />
-                        
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon">
-                              <MoreHorizontal className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem className="gap-2">
-                              <Bell className="h-4 w-4" />
-                              Notify Customer
-                            </DropdownMenuItem>
-                            <DropdownMenuItem className="gap-2">
-                              <FileText className="h-4 w-4" />
-                              Create Invoice
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem className="gap-2 text-red-600">
-                              Cancel Job
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </ScrollArea>
-        
-        {filteredJobs.length === 0 && (
-          <div className="p-4 text-center text-muted-foreground">
-            No jobs found matching your filters.
-          </div>
-        )}
-      </div>
+      <JobsTable 
+        jobs={filteredJobs}
+        onViewDetails={onViewDetails}
+      />
     </div>
   );
 };
