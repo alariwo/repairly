@@ -112,3 +112,37 @@
     @apply text-xs font-medium px-2.5 py-0.5 rounded-full;
   }
 }
+
+/* Responsive Customizations */
+@media (max-width: 640px) {
+  .repairam-card {
+    @apply p-4; /* Reduce padding on small screens */
+  }
+
+  .repairam-btn-primary {
+    @apply text-sm; /* Reduce font size on small screens */
+  }
+
+  .repairam-input {
+    @apply p-2; /* Reduce padding on small screens */
+  }
+}
+
+@media (min-width: 640px) and (max-width: 768px) {
+  .repairam-card {
+    @apply p-6; /* Medium padding for tablets */
+  }
+
+  .repairam-btn-primary {
+    @apply text-base; /* Slightly larger font size */
+  }
+}
+@media (min-width: 768px) {
+  .repairam-card {
+    @apply p-8; /* Larger padding for desktops */
+  }
+
+  .repairam-btn-primary {
+    @apply text-lg; /* Larger font size for desktops */
+  }
+}

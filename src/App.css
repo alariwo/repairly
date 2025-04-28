@@ -1,7 +1,8 @@
+/* Base Styles */
 #root {
-  max-width: 1280px;
+  max-width: 100%; /* Allow full width on smaller screens */
   margin: 0 auto;
-  padding: 2rem;
+  padding: 1rem; /* Reduced padding for smaller screens */
   text-align: center;
 }
 
@@ -34,9 +35,54 @@
 }
 
 .card {
-  padding: 2em;
+  padding: 1em; /* Reduced padding for smaller screens */
 }
 
 .read-the-docs {
   color: #888;
+}
+
+/* Responsive Design */
+@media (min-width: 640px) {
+  #root {
+    max-width: 640px; /* Adjust for small tablets */
+    padding: 1.5rem;
+  }
+
+  .card {
+    padding: 1.5em;
+  }
+}
+
+@media (min-width: 768px) {
+  #root {
+    max-width: 768px; /* Adjust for tablets */
+    padding: 2rem;
+  }
+
+  .card {
+    padding: 2em;
+  }
+}
+
+@media (min-width: 1024px) {
+  #root {
+    max-width: 1024px; /* Adjust for desktops */
+    padding: 2.5rem;
+  }
+
+  .card {
+    padding: 2.5em;
+  }
+}
+
+@media (min-width: 1280px) {
+  #root {
+    max-width: 1280px; /* Maximum width for large screens */
+    padding: 3rem;
+  }
+
+  .card {
+    padding: 3em;
+  }
 }
