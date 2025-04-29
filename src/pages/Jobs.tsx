@@ -553,74 +553,76 @@ const Jobs = () => {
   }, [handleViewDetails, navigate, toast]);
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold tracking-tight">Repair Jobs</h1>
-        <div className="flex space-x-3">
-          <Button 
-            variant="outline" 
-            className="relative" 
+    <div className="flex flex-col h-screen">
+      {/* Header Section */}
+      <div className="flex justify-between items-center p-6 bg-white shadow-sm sticky top-0 z-10">
+      <h1 className="text-2xl font-bold tracking-tight">Repair Jobs</h1>
+      <div className="flex space-x-3">
+          <Button
+            variant="outline"
+            className="relative"
             onClick={() => setShowNotifications(!showNotifications)}
           >
             <Bell className="h-5 w-5" />
-            {notificationJobs.length > 0 && (
-              <span className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-red-500 text-white text-xs flex items-center justify-center">
-                {notificationJobs.length}
-              </span>
-            )}
-          </Button>
-          <Button onClick={handleNewJob} className="bg-repairam hover:bg-repairam-dark">
-            <PlusCircle className="mr-2 h-4 w-4" /> New Job
+          {notificationJobs.length > 0 && (
+            <span className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-red-500 text-white text-xs flex items-center justify-center">
+              {notificationJobs.length}
+            </span>
+          )}
+        </Button>
+        <Button onClick={handleNewJob} className="bg-repairam hover:bg-repairam-dark">
+          <PlusCircle className="mr-2 h-4 w-4" /> New Job
+        </Button>
+      </div>
+    </div>
+
+    {showNotifications && notificationJobs.length > 0 && (
+      <div className="space-y-3 px-6 py-4 bg-gray-50">
+        {notificationJobs.map((job) => (
+          <Alert key={job.id} className="border-l-4 border-l-repairam">
+            <AlertTitle className="flex justify-between">
+              <span>Status Update: {job.id}</span>
+              <span className="text-xs text-gray-500">Today</span>
+            </AlertTitle>
+            <AlertDescription>
+              <p> {job.assignedTo} has marked this job as{' '}
+                <strong>{job.status.replace('-', ' ')}</strong>
+              </p>
+              <div className="mt-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="mr-2"
+                  onClick={() => handleStatusChange(job.id, 'delivered')}
+                >
+                  Mark as Delivered
+                </Button>
+              </div>
+            </AlertDescription>
+          </Alert>
+        ))}
+        <div className="flex justify-end">
+          <Button variant="ghost" size="sm" onClick={handleClearNotifications}>
+            Clear All
           </Button>
         </div>
       </div>
-
-      {showNotifications && notificationJobs.length > 0 && (
-        <div className="space-y-3">
-          {notificationJobs.map(job => (
-            <Alert key={job.id} className="border-l-4 border-l-repairam">
-              <AlertTitle className="flex justify-between">
-                <span>Status Update: {job.id}</span>
-                <span className="text-xs text-gray-500">Today</span>
-              </AlertTitle>
-              <AlertDescription>
-                <p>{job.assignedTo} has marked this job as <strong>{job.status.replace('-', ' ')}</strong></p>
-                <div className="mt-2">
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    className="mr-2"
-                    onClick={() => handleStatusChange(job.id, 'delivered')}
-                  >
-                    Mark as Delivered
-                  </Button>
-                </div>
-              </AlertDescription>
-            </Alert>
-          ))}
-          <div className="flex justify-end">
-            <Button variant="ghost" size="sm" onClick={handleClearNotifications}>
-              Clear All
-            </Button>
-          </div>
-        </div>
-      )}
-
-      <Card>
+    )}
+      
+ <Card className="sm:max-h-[calc(100vh-20rem)] overflow-y-auto"> 
         <CardHeader className="pb-3">
           <div className="flex justify-between items-center">
             <CardTitle>Job Management</CardTitle>
             <div className="flex items-center space-x-2">
-              <Button 
-                variant="outline" 
-                size="sm" 
+              <Button
+                variant="outline"
+                size="sm"
                 onClick={() => setIsFilterExpanded(!isFilterExpanded)}
                 className="flex items-center gap-1"
               >
-                <ListFilter className="h-4 w-4" />
+                 <ListFilter className="h-4 w-4" />
                 {isFilterExpanded ? 'Hide Filters' : 'Show Filters'}
               </Button>
-              
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 h-4 w-4" />
                 <Input
@@ -634,7 +636,7 @@ const Jobs = () => {
           </div>
           
           {isFilterExpanded && (
-            <div className="mt-4 grid grid-cols-1 md:grid-cols-4 gap-4 bg-gray-50 p-4 rounded-md border">
+             <div className="mt-4 grid grid-cols-1 md:grid-cols-4 gap-4 bg-gray-50 p-4 rounded-md border">
               <div>
                 <Label className="text-xs mb-1 block">Status</Label>
                 <Select 

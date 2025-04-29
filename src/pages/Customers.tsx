@@ -117,9 +117,7 @@ const Customers = () => {
     const handleOpenAddCustomerDialog = () => {
       setIsAddCustomerDialogOpen(true);
     };
-    
     window.addEventListener('open-add-customer-dialog', handleOpenAddCustomerDialog);
-    
     return () => {
       window.removeEventListener('open-add-customer-dialog', handleOpenAddCustomerDialog);
     };
@@ -145,7 +143,6 @@ const Customers = () => {
       });
       return;
     }
-    
     // Check if this is an edit or new customer
     if (selectedCustomer) {
       // Update existing customer
@@ -160,7 +157,6 @@ const Customers = () => {
             } 
           : c
       );
-      
       setLocalCustomers(updatedCustomers);
       toast({
         title: "Customer Updated",
@@ -176,14 +172,12 @@ const Customers = () => {
         totalSpent: 0,
         lastJob: 'N/A'
       };
-      
       setLocalCustomers([customer, ...localCustomers]);
       toast({
         title: "Customer Added",
         description: `${customer.name} has been added to your customers.`,
       });
     }
-    
     // Reset form and close dialog
     safeCloseAddDialog();
   };
@@ -220,7 +214,6 @@ const Customers = () => {
         detail: { customer: customer.name, email: customer.email, phone: customer.phone } 
       }));
     }, 100);
-    
     // Close the dialog if open
     if (isCustomerDetailsDialogOpen) {
       safeCloseDetailsDialog();
@@ -242,98 +235,101 @@ const Customers = () => {
   }, [toast]);
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
+    <div className="flex flex-col h-screen">
+      {/* Header Section */}
+      <div className="flex justify-between items-center p-6 bg-white shadow-sm sticky top-0 z-10">
         <h1 className="text-2xl font-bold tracking-tight">Customers</h1>
         <Button onClick={handleAddCustomer} className="bg-repairam hover:bg-repairam-dark">
           <UserPlus className="mr-2 h-4 w-4" /> Add Customer
         </Button>
       </div>
 
-      <Card>
-        <CardHeader className="pb-3">
-          <div className="flex justify-between items-center">
-            <CardTitle>Customer Directory</CardTitle>
-            <div className="flex items-center space-x-2">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 h-4 w-4" />
-                <Input
-                  placeholder="Search customers..."
-                  className="pl-10 w-[300px]"
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                />
+      {/* Main Content (Scrollable) */}
+      <div className="flex-1 overflow-y-auto px-6 py-4">
+        <Card>
+          <CardHeader className="pb-3">
+            <div className="flex justify-between items-center">
+              <CardTitle>Customer Directory</CardTitle>
+              <div className="flex items-center space-x-2">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 h-4 w-4" />
+                  <Input
+                    placeholder="Search customers..."
+                    className="pl-10 w-[300px]"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                  />
+                </div>
+                <Button variant="outline" size="icon" onClick={handleFilterClick}>
+                  <Filter className="h-4 w-4" />
+                </Button>
               </div>
-              <Button variant="outline" size="icon" onClick={handleFilterClick}>
-                <Filter className="h-4 w-4" />
-              </Button>
             </div>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <div className="rounded-md border">
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm text-left">
-                <thead className="text-xs text-gray-700 uppercase bg-gray-100">
-                  <tr>
-                    <th className="px-6 py-3">Name</th>
-                    <th className="px-6 py-3">Contact</th>
-                    <th className="px-6 py-3">Location</th>
-                    <th className="px-6 py-3">Jobs</th>
-                    <th className="px-6 py-3">Total Spent</th>
-                    <th className="px-6 py-3">Last Job</th>
-                    <th className="px-6 py-3 text-right">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredCustomers.map((customer) => (
-                    <tr key={customer.id} className="bg-white border-b hover:bg-gray-50">
-                      <td className="px-6 py-4 font-medium">{customer.name}</td>
-                      <td className="px-6 py-4">
-                        <div>{customer.email}</div>
-                        <div className="text-gray-500">{customer.phone}</div>
-                      </td>
-                      <td className="px-6 py-4">{customer.location}</td>
-                      <td className="px-6 py-4">{customer.jobsCompleted}</td>
-                      <td className="px-6 py-4">${customer.totalSpent}</td>
-                      <td className="px-6 py-4">{customer.lastJob}</td>
-                      <td className="px-6 py-4 text-right">
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon" className="h-8 w-8">
-                              <MoreHorizontal className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => handleViewDetails(customer)}>
-                              View Details
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => handleEditCustomer(customer)}>
-                              Edit Customer
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => handleCreateJobForCustomer(customer)}>
-                              Create Job
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => handleMessageCustomer(customer)}>
-                              Message
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </td>
+          </CardHeader>
+          <CardContent>
+            <div className="rounded-md border">
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm text-left">
+                  <thead className="text-xs text-gray-700 uppercase bg-gray-100">
+                    <tr>
+                      <th className="px-6 py-3">Name</th>
+                      <th className="px-6 py-3">Contact</th>
+                      <th className="px-6 py-3">Location</th>
+                      <th className="px-6 py-3">Jobs</th>
+                      <th className="px-6 py-3">Total Spent</th>
+                      <th className="px-6 py-3">Last Job</th>
+                      <th className="px-6 py-3 text-right">Actions</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-            
-            {filteredCustomers.length === 0 && (
-              <div className="py-10 text-center text-gray-500">
-                <p>No customers found matching your search.</p>
+                  </thead>
+                  <tbody>
+                    {filteredCustomers.map((customer) => (
+                      <tr key={customer.id} className="bg-white border-b hover:bg-gray-50">
+                        <td className="px-6 py-4 font-medium">{customer.name}</td>
+                        <td className="px-6 py-4">
+                          <div>{customer.email}</div>
+                          <div className="text-gray-500">{customer.phone}</div>
+                        </td>
+                        <td className="px-6 py-4">{customer.location}</td>
+                        <td className="px-6 py-4">{customer.jobsCompleted}</td>
+                        <td className="px-6 py-4">${customer.totalSpent}</td>
+                        <td className="px-6 py-4">{customer.lastJob}</td>
+                        <td className="px-6 py-4 text-right">
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="icon" className="h-8 w-8">
+                                <MoreHorizontal className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem onClick={() => handleViewDetails(customer)}>
+                                View Details
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => handleEditCustomer(customer)}>
+                                Edit Customer
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => handleCreateJobForCustomer(customer)}>
+                                Create Job
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => handleMessageCustomer(customer)}>
+                                Message
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
-            )}
-          </div>
-        </CardContent>
-      </Card>
+              {filteredCustomers.length === 0 && (
+                <div className="py-10 text-center text-gray-500">
+                  <p>No customers found matching your search.</p>
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
 
       {/* Add/Edit Customer Dialog */}
       <Dialog 
