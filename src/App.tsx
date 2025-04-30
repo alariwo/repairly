@@ -16,6 +16,7 @@ import TechnicianAnalytics from "./pages/TechnicianAnalytics";
 import NotFound from "./pages/NotFound";
 import Accounting from "./pages/Accounting";
 import UserManagement from "./pages/UserManagement";
+import Auth from "./pages/Auth";
 
 const queryClient = new QueryClient();
 
@@ -26,6 +27,8 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <Routes>
+          <Route path="/auth" element={<Auth />} />
+
           <Route path="/" element={<Layout><Dashboard /></Layout>} />
           <Route path="/customers" element={<Layout><Customers /></Layout>} />
           <Route path="/jobs" element={<Layout><Jobs /></Layout>} />
@@ -37,7 +40,7 @@ const App = () => (
           <Route path="/settings" element={<Layout><div className="p-6">Settings Coming Soon</div></Layout>} />
           <Route path="/accounting" element={<Layout><Accounting /></Layout>} />
           <Route path="/user-management" element={<Layout><UserManagement /></Layout>} />
-          {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+         
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>

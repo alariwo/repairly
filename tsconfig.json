@@ -6,6 +6,11 @@
   ],
   "compilerOptions": {
     "baseUrl": ".",
+    "jsx": "react-jsx",
+    "moduleResolution": "node",
+    "esModuleInterop": true,
+    "module": "esnext",
+    "target": "es6",
     "paths": {
       "@/*": ["./src/*"]
     },
