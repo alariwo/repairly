@@ -1,9 +1,8 @@
-
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom"; // Import Navigate
 import Layout from "./components/layout/Layout";
 import Dashboard from "./pages/Dashboard";
 import Customers from "./pages/Customers";
@@ -27,7 +26,10 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <Routes>
-          <Route path="/" element={<Layout><Dashboard /></Layout>} />
+          {/* Redirect root path ("/") to "/auth" */}
+          <Route path="/" element={<Navigate to="/auth" replace />} />
+          <Route path="/auth" element={<Auth />} />
+          <Route path="/dashboard" element={<Layout><Dashboard /></Layout>} />
           <Route path="/customers" element={<Layout><Customers /></Layout>} />
           <Route path="/jobs" element={<Layout><Jobs /></Layout>} />
           <Route path="/inventory" element={<Layout><Inventory /></Layout>} />

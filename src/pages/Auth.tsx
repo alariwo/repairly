@@ -1,7 +1,3 @@
-<<<<<<< HEAD
-=======
-
->>>>>>> c192108c72dab8c6acb0ae375fe1b0bf6131faf9
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { LoginForm } from "@/components/auth/LoginForm";
