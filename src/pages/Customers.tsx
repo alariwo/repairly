@@ -1,16 +1,19 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { PlusCircle, Search, Filter, ChevronDown, MoreHorizontal, UserPlus, Mail } from 'lucide-react';
-import { 
+import React, { useState, useEffect } from "react";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import { useToast } from '@/hooks/use-toast';
-import { useNavigate } from 'react-router-dom';
+} from "@/components/ui/dropdown-menu";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Dialog, 
   DialogContent, 
@@ -19,220 +22,260 @@ import {
   DialogFooter,
   DialogDescription
 } from "@/components/ui/dialog";
-import { Label } from "@/components/ui/label";
-import { useLocalStorage } from '@/hooks/use-local-storage';
+import { toast } from "@/hooks/use-toast";
+import {
+  MoreHorizontal,
+  Search,
+  UserPlus,
+  Mail,
+} from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
-// Demo data
-const initialCustomers = [
-  { 
-    id: 1, 
-    name: 'John Smith', 
-    email: 'john.smith@example.com', 
-    phone: '(555) 123-4567',
-    location: 'New York, NY', 
-    jobsCompleted: 3,
-    totalSpent: 450,
-    lastJob: '2025-03-15'
-  },
-  { 
-    id: 2, 
-    name: 'Sarah Johnson', 
-    email: 'sarah.j@example.com', 
-    phone: '(555) 234-5678',
-    location: 'Chicago, IL', 
-    jobsCompleted: 1,
-    totalSpent: 180,
-    lastJob: '2025-04-02'
-  },
-  { 
-    id: 3, 
-    name: 'Michael Brown', 
-    email: 'michael.b@example.com', 
-    phone: '(555) 345-6789',
-    location: 'Los Angeles, CA', 
-    jobsCompleted: 5,
-    totalSpent: 790,
-    lastJob: '2025-04-08'
-  },
-  { 
-    id: 4, 
-    name: 'Emily Davis', 
-    email: 'emily.davis@example.com', 
-    phone: '(555) 456-7890',
-    location: 'Boston, MA', 
-    jobsCompleted: 2,
-    totalSpent: 350,
-    lastJob: '2025-03-25'
-  },
-  { 
-    id: 5, 
-    name: 'David Wilson', 
-    email: 'david.w@example.com', 
-    phone: '(555) 567-8901',
-    location: 'Austin, TX', 
-    jobsCompleted: 4,
-    totalSpent: 620,
-    lastJob: '2025-04-01'
-  },
-];
+interface Customer {
+  _id: string; // Use `_id` as per the API response
+  name: string;
+  email: string;
+  phone: string;
+  location: string;
+  jobsCompleted: number;
+  totalSpent: number;
+}
 
 const Customers = () => {
-  const { toast } = useToast();
-  const navigate = useNavigate();
-  const [searchTerm, setSearchTerm] = useState('');
+  const [customers, setCustomers] = useState<Customer[]>([]);
+  const [searchTerm, setSearchTerm] = useState("");
   const [isAddCustomerDialogOpen, setIsAddCustomerDialogOpen] = useState(false);
-  const [isCustomerDetailsDialogOpen, setIsCustomerDetailsDialogOpen] = useState(false);
-  const [selectedCustomer, setSelectedCustomer] = useState<typeof initialCustomers[0] | null>(null);
+  const [isCustomerDetailsDialogOpen, setIsCustomerDetailsDialogOpen] =
+    useState(false);
+  const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(
+    null
+  );
   const [newCustomer, setNewCustomer] = useState({
-    name: '',
-    email: '',
-    phone: '',
-    location: '',
+    name: "",
+    email: "",
+    phone: "",
+    location: "",
   });
-  const [localCustomers, setLocalCustomers] = useLocalStorage('repair-app-customers', initialCustomers);
-  const dialogRef = useRef<HTMLDivElement>(null);
+  const navigate = useNavigate();
+  const [currentPage, setCurrentPage] = useState(1); // Current page for pagination
+  const [customersPerPage] = useState(10); // Number of customers per page
 
-  const safeCloseDetailsDialog = useCallback(() => {
-    setTimeout(() => {
-      setIsCustomerDetailsDialogOpen(false);
-      setSelectedCustomer(null);
-    }, 10);
-  }, []);
+  // Helper function to get the auth token from localStorage
+  const getAuthToken = () => {
+    return localStorage.getItem("authToken");
+  };
 
-  const safeCloseAddDialog = useCallback(() => {
-    setTimeout(() => {
-      setIsAddCustomerDialogOpen(false);
-      setSelectedCustomer(null);
-      setNewCustomer({
-        name: '',
-        email: '',
-        phone: '',
-        location: '',
+  // Fetch all customers from the backend API
+  const fetchCustomers = async () => {
+    try {
+      const authToken = getAuthToken();
+      if (!authToken) {
+        throw new Error("Authentication token is missing");
+      }
+
+      const response = await fetch(
+        "https://repairly-backend.onrender.com/api/customers/",
+        {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${authToken}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to fetch customers");
+      }
+
+      const data = await response.json();
+      setCustomers(data); // Update state with fetched customers
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to load customers. Please try again later.",
+        variant: "destructive",
       });
-    }, 10);
+    }
+  };
+
+  // Fetch customers on component mount
+  useEffect(() => {
+    fetchCustomers();
   }, []);
 
+  // Listen for the `user-logged-in` event
   useEffect(() => {
-    // Listen for custom event to open add customer dialog
-    const handleOpenAddCustomerDialog = () => {
-      setIsAddCustomerDialogOpen(true);
+    const handleUserLoggedIn = () => {
+      fetchCustomers();
     };
-    window.addEventListener('open-add-customer-dialog', handleOpenAddCustomerDialog);
+
+    window.addEventListener("user-logged-in", handleUserLoggedIn);
     return () => {
-      window.removeEventListener('open-add-customer-dialog', handleOpenAddCustomerDialog);
+      window.removeEventListener("user-logged-in", handleUserLoggedIn);
     };
   }, []);
 
   const handleAddCustomer = () => {
     setNewCustomer({
-      name: '',
-      email: '',
-      phone: '',
-      location: '',
+      name: "",
+      email: "",
+      phone: "",
+      location: "",
     });
     setIsAddCustomerDialogOpen(true);
   };
 
-  const handleCreateCustomer = () => {
-    // Validate form
-    if (!newCustomer.name || !newCustomer.email) {
-      toast({
-        title: "Missing Information",
-        description: "Please provide at least a name and email.",
-        variant: "destructive"
-      });
-      return;
-    }
-    // Check if this is an edit or new customer
-    if (selectedCustomer) {
-      // Update existing customer
-      const updatedCustomers = localCustomers.map(c => 
-        c.id === selectedCustomer.id 
-          ? { 
-              ...c, 
-              name: newCustomer.name, 
-              email: newCustomer.email, 
-              phone: newCustomer.phone, 
-              location: newCustomer.location 
-            } 
-          : c
-      );
-      setLocalCustomers(updatedCustomers);
-      toast({
-        title: "Customer Updated",
-        description: `${newCustomer.name}'s information has been updated.`,
-      });
-    } else {
-      // Add the new customer
-      const newId = Math.max(...localCustomers.map(c => c.id)) + 1;
-      const customer = {
-        ...newCustomer,
-        id: newId,
-        jobsCompleted: 0,
-        totalSpent: 0,
-        lastJob: 'N/A'
-      };
-      setLocalCustomers([customer, ...localCustomers]);
-      toast({
-        title: "Customer Added",
-        description: `${customer.name} has been added to your customers.`,
-      });
-    }
-    // Reset form and close dialog
-    safeCloseAddDialog();
-  };
-
-  const filteredCustomers = localCustomers.filter(customer => 
-    customer.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    customer.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    customer.phone.includes(searchTerm)
-  );
-
-  const handleViewDetails = useCallback((customer: typeof initialCustomers[0]) => {
-    setSelectedCustomer(customer);
-    setIsCustomerDetailsDialogOpen(true);
-  }, []);
-
-  const handleEditCustomer = useCallback((customer: typeof initialCustomers[0]) => {
-    setSelectedCustomer(customer);
-    // Pre-fill the form with customer data
+  const handleEditCustomer = (customer: Customer) => {
+    setSelectedCustomer(customer); // Set the selected customer
     setNewCustomer({
       name: customer.name,
       email: customer.email,
       phone: customer.phone,
       location: customer.location,
-    });
-    setIsAddCustomerDialogOpen(true);
-  }, []);
+    }); // Pre-fill the form fields
+    setIsAddCustomerDialogOpen(true); // Open the modal
+  };
 
-  const handleCreateJobForCustomer = useCallback((customer: typeof initialCustomers[0]) => {
-    // Navigate to jobs page and dispatch event to open new job dialog
-    navigate('/jobs');
-    // Use a timeout to ensure navigation completes first
-    setTimeout(() => {
-      window.dispatchEvent(new CustomEvent('open-new-job-dialog', { 
-        detail: { customer: customer.name, email: customer.email, phone: customer.phone } 
-      }));
-    }, 100);
-    // Close the dialog if open
-    if (isCustomerDetailsDialogOpen) {
-      safeCloseDetailsDialog();
+  const handleCreateCustomer = async () => {
+    if (!newCustomer.name || !newCustomer.email) {
+      toast({
+        title: "Missing Information",
+        description: "Please provide at least a name and email.",
+        variant: "destructive",
+      });
+      return;
     }
-  }, [navigate, isCustomerDetailsDialogOpen, safeCloseDetailsDialog]);
 
-  const handleMessageCustomer = useCallback((customer: typeof initialCustomers[0]) => {
+    try {
+      const authToken = getAuthToken();
+      if (!authToken) {
+        throw new Error("Authentication token is missing");
+      }
+
+      let method = "POST";
+      let url = "https://repairly-backend.onrender.com/api/customers";
+
+      // If editing an existing customer, update the URL and method
+      if (selectedCustomer) {
+        method = "PUT";
+        url = `https://repairly-backend.onrender.com/api/customers/${selectedCustomer._id}`;
+      }
+
+      const response = await fetch(url, {
+        method: method,
+        headers: {
+          Authorization: `Bearer ${authToken}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(newCustomer),
+      });
+
+      if (!response.ok) {
+        throw new Error(selectedCustomer ? "Failed to update customer" : "Failed to create customer");
+      }
+
+      const result = await response.json();
+
+      if (selectedCustomer) {
+        // Update the existing customer in the list
+        setCustomers((prevCustomers) =>
+          prevCustomers.map((c) => (c._id === result._id ? result : c))
+        );
+        toast({
+          title: "Customer Updated",
+          description: `${result.name}'s information has been updated.`,
+        });
+      } else {
+        // Add the new customer to the list
+        setCustomers([result, ...customers]);
+        toast({
+          title: "Customer Added",
+          description: `${result.name} has been added to your customers.`,
+        });
+      }
+
+      // Reset the form and close the modal
+      setIsAddCustomerDialogOpen(false);
+      setSelectedCustomer(null);
+      setNewCustomer({
+        name: "",
+        email: "",
+        phone: "",
+        location: "",
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to process the request. Please try again later.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleDeleteCustomer = async (customerId: string) => {
+    try {
+      const authToken = getAuthToken();
+      if (!authToken) {
+        throw new Error("Authentication token is missing");
+      }
+
+      const response = await fetch(
+        `https://repairly-backend.onrender.com/api/customers/${customerId}`,
+        {
+          method: "DELETE",
+          headers: {
+            Authorization: `Bearer ${authToken}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to delete customer");
+      }
+
+      setCustomers((prevCustomers) =>
+        prevCustomers.filter((c) => c._id !== customerId)
+      ); // Remove deleted customer
+      toast({
+        title: "Customer Deleted",
+        description: "The customer has been successfully deleted.",
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to delete customer. Please try again later.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const filteredCustomers = customers.filter((customer) =>
+    customer.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    customer.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    customer.phone.includes(searchTerm)
+  );
+
+  // Pagination Logic
+  const indexOfLastCustomer = currentPage * customersPerPage;
+  const indexOfFirstCustomer = indexOfLastCustomer - customersPerPage;
+  const currentCustomers = filteredCustomers.slice(indexOfFirstCustomer, indexOfLastCustomer);
+
+  // Change Page
+  const paginate = (pageNumber: number) => setCurrentPage(pageNumber);
+
+  const handleViewDetails = (customer: Customer) => {
+    setSelectedCustomer(customer);
+    setIsCustomerDetailsDialogOpen(true);
+  };
+
+  const handleMessageCustomer = (customer: Customer) => {
     toast({
       title: "Message Sent",
-      description: `A message has been sent to ${customer.name}.`,
+      description: `A message has been sent to ${customer.name} (${customer.email}).`,
     });
-  }, [toast]);
-
-  const handleFilterClick = useCallback(() => {
-    toast({
-      title: "Filter Options",
-      description: "Advanced filtering options would appear here.",
-    });
-  }, [toast]);
+  };
 
   return (
     <div className="flex flex-col h-screen">
@@ -250,49 +293,41 @@ const Customers = () => {
           <CardHeader className="pb-3">
             <div className="flex justify-between items-center">
               <CardTitle>Customer Directory</CardTitle>
-              <div className="flex items-center space-x-2">
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 h-4 w-4" />
-                  <Input
-                    placeholder="Search customers..."
-                    className="pl-10 w-[300px]"
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                  />
-                </div>
-                <Button variant="outline" size="icon" onClick={handleFilterClick}>
-                  <Filter className="h-4 w-4" />
-                </Button>
+              <div className="relative w-64">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 h-4 w-4" />
+                <Input
+                  placeholder="Search customers..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-10"
+                />
               </div>
             </div>
           </CardHeader>
           <CardContent>
-            <div className="rounded-md border">
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm text-left">
-                  <thead className="text-xs text-gray-700 uppercase bg-gray-100">
-                    <tr>
-                      <th className="px-6 py-3">Name</th>
-                      <th className="px-6 py-3">Contact</th>
-                      <th className="px-6 py-3">Location</th>
-                      <th className="px-6 py-3">Jobs</th>
-                      <th className="px-6 py-3">Total Spent</th>
-                      <th className="px-6 py-3">Last Job</th>
-                      <th className="px-6 py-3 text-right">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filteredCustomers.map((customer) => (
-                      <tr key={customer.id} className="bg-white border-b hover:bg-gray-50">
-                        <td className="px-6 py-4 font-medium">{customer.name}</td>
-                        <td className="px-6 py-4">
-                          <div>{customer.email}</div>
-                          <div className="text-gray-500">{customer.phone}</div>
-                        </td>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm text-left">
+                <thead className="text-xs text-gray-700 uppercase bg-gray-100">
+                  <tr>
+                    <th className="px-6 py-3">Name</th>
+                    <th className="px-6 py-3">Email</th>
+                    <th className="px-6 py-3">Phone</th>
+                    <th className="px-6 py-3">Location</th>
+                    <th className="px-6 py-3">Jobs Completed</th>
+                    <th className="px-6 py-3">Total Spent</th>
+                    <th className="px-6 py-3 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {currentCustomers.length > 0 ? (
+                    currentCustomers.map((customer) => (
+                      <tr key={customer._id} className="bg-white border-b hover:bg-gray-50">
+                        <td className="px-6 py-4">{customer.name}</td>
+                        <td className="px-6 py-4">{customer.email}</td>
+                        <td className="px-6 py-4">{customer.phone}</td>
                         <td className="px-6 py-4">{customer.location}</td>
                         <td className="px-6 py-4">{customer.jobsCompleted}</td>
-                        <td className="px-6 py-4">${customer.totalSpent}</td>
-                        <td className="px-6 py-4">{customer.lastJob}</td>
+                        <td className="px-6 py-4">₦{customer.totalSpent}</td>
                         <td className="px-6 py-4 text-right">
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
@@ -307,8 +342,8 @@ const Customers = () => {
                               <DropdownMenuItem onClick={() => handleEditCustomer(customer)}>
                                 Edit Customer
                               </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => handleCreateJobForCustomer(customer)}>
-                                Create Job
+                              <DropdownMenuItem onClick={() => handleDeleteCustomer(customer._id)}>
+                                Delete Customer
                               </DropdownMenuItem>
                               <DropdownMenuItem onClick={() => handleMessageCustomer(customer)}>
                                 Message
@@ -317,36 +352,65 @@ const Customers = () => {
                           </DropdownMenu>
                         </td>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-              {filteredCustomers.length === 0 && (
-                <div className="py-10 text-center text-gray-500">
-                  <p>No customers found matching your search.</p>
-                </div>
-              )}
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan={7} className="py-10 text-center text-gray-500">
+                        No customers found matching your search.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
             </div>
           </CardContent>
         </Card>
+
+        {/* Pagination Controls */}
+        <div className="flex justify-center mt-6">
+          <Button
+            disabled={currentPage === 1}
+            onClick={() => paginate(currentPage - 1)}
+            className="mr-2"
+          >
+            Previous
+          </Button>
+          <span className="self-center">
+            Page {currentPage} of {Math.ceil(filteredCustomers.length / customersPerPage)}
+          </span>
+          <Button
+            disabled={indexOfLastCustomer >= filteredCustomers.length}
+            onClick={() => paginate(currentPage + 1)}
+            className="ml-2"
+          >
+            Next
+          </Button>
+        </div>
       </div>
 
       {/* Add/Edit Customer Dialog */}
-      <Dialog 
-        open={isAddCustomerDialogOpen} 
+      <Dialog
+        open={isAddCustomerDialogOpen}
         onOpenChange={(open) => {
           if (!open) {
-            safeCloseAddDialog();
+            setIsAddCustomerDialogOpen(false);
+            setSelectedCustomer(null);
+            setNewCustomer({
+              name: "",
+              email: "",
+              phone: "",
+              location: "",
+            });
           }
         }}
       >
-        <DialogContent className="sm:max-w-[525px]" ref={dialogRef}>
+        <DialogContent className="sm:max-w-[525px]">
           <DialogHeader>
-            <DialogTitle>{selectedCustomer ? 'Edit Customer' : 'Add New Customer'}</DialogTitle>
+            <DialogTitle>{selectedCustomer ? "Edit Customer" : "Add New Customer"}</DialogTitle>
             <DialogDescription>
-              {selectedCustomer 
-                ? 'Update customer information below.' 
-                : 'Enter the details for the new customer. Name and email are required.'}
+              {selectedCustomer
+                ? "Update customer information below."
+                : "Enter the details for the new customer. Name and email are required."}
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
@@ -357,30 +421,35 @@ const Customers = () => {
               <Input
                 id="name"
                 value={newCustomer.name}
-                onChange={(e) => setNewCustomer({ ...newCustomer, name: e.target.value })}
+                onChange={(e) =>
+                  setNewCustomer({ ...newCustomer, name: e.target.value })
+                }
                 className="col-span-3"
               />
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="customer-email" className="text-right">
+              <Label htmlFor="email" className="text-right">
                 Email
               </Label>
               <Input
-                id="customer-email"
-                type="email"
+                id="email"
                 value={newCustomer.email}
-                onChange={(e) => setNewCustomer({ ...newCustomer, email: e.target.value })}
+                onChange={(e) =>
+                  setNewCustomer({ ...newCustomer, email: e.target.value })
+                }
                 className="col-span-3"
               />
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="customer-phone" className="text-right">
+              <Label htmlFor="phone" className="text-right">
                 Phone
               </Label>
               <Input
-                id="customer-phone"
+                id="phone"
                 value={newCustomer.phone}
-                onChange={(e) => setNewCustomer({ ...newCustomer, phone: e.target.value })}
+                onChange={(e) =>
+                  setNewCustomer({ ...newCustomer, phone: e.target.value })
+                }
                 className="col-span-3"
               />
             </div>
@@ -391,28 +460,31 @@ const Customers = () => {
               <Input
                 id="location"
                 value={newCustomer.location}
-                onChange={(e) => setNewCustomer({ ...newCustomer, location: e.target.value })}
+                onChange={(e) =>
+                  setNewCustomer({ ...newCustomer, location: e.target.value })
+                }
                 className="col-span-3"
               />
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={safeCloseAddDialog}>
+            <Button variant="outline" onClick={() => setIsAddCustomerDialogOpen(false)}>
               Cancel
             </Button>
             <Button onClick={handleCreateCustomer}>
-              {selectedCustomer ? 'Update Customer' : 'Add Customer'}
+              {selectedCustomer ? "Update Customer" : "Add Customer"}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
       {/* Customer Details Dialog */}
-      <Dialog 
-        open={isCustomerDetailsDialogOpen} 
+      <Dialog
+        open={isCustomerDetailsDialogOpen}
         onOpenChange={(open) => {
           if (!open) {
-            safeCloseDetailsDialog();
+            setIsCustomerDetailsDialogOpen(false);
+            setSelectedCustomer(null);
           }
         }}
       >
@@ -444,42 +516,16 @@ const Customers = () => {
               </div>
               <div>
                 <h4 className="text-sm font-medium mb-1">Total Spent</h4>
-                <p>${selectedCustomer.totalSpent}</p>
-              </div>
-              <div>
-                <h4 className="text-sm font-medium mb-1">Last Job</h4>
-                <p>{selectedCustomer.lastJob}</p>
+                <p>₦{selectedCustomer.totalSpent}</p>
               </div>
             </div>
-            <DialogFooter className="flex justify-between items-center">
-              <Button 
-                variant="outline" 
-                className="flex items-center gap-1"
-                onClick={() => {
-                  handleMessageCustomer(selectedCustomer);
-                  safeCloseDetailsDialog();
-                }}
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => setIsCustomerDetailsDialogOpen(false)}
               >
-                <Mail className="h-4 w-4" /> Send Message
+                Close
               </Button>
-              <div className="space-x-2">
-                <Button 
-                  variant="outline" 
-                  onClick={() => {
-                    handleEditCustomer(selectedCustomer);
-                    safeCloseDetailsDialog();
-                  }}
-                >
-                  Edit Customer
-                </Button>
-                <Button
-                  onClick={() => {
-                    handleCreateJobForCustomer(selectedCustomer);
-                  }}
-                >
-                  Create Job
-                </Button>
-              </div>
             </DialogFooter>
           </DialogContent>
         )}

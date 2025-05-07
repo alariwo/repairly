@@ -32,7 +32,7 @@ export const LoginForm = ({ onSignupClick }: { onSignupClick: () => void }) => {
     try {
       // Show the "Working" toast with a wrench icon
       const workingToastId = toast({
-        title: "Waving the msgic wand.",
+        title: "Waving my magic wand.",
         description: "Please wait while I process your request...",
       });
 
@@ -56,22 +56,21 @@ export const LoginForm = ({ onSignupClick }: { onSignupClick: () => void }) => {
       localStorage.setItem("authToken", token);
       localStorage.setItem("userRole", user.role);
 
+      // Dispatch a custom event to notify other components about the login
+      window.dispatchEvent(new CustomEvent("user-logged-in"));
+
       // Redirect based on user role
       if (user.role === "technician") {
         navigate("/technician");
-      } else if (user.role === "admin") {
-        navigate("/dashboard");
-      } else if (user.role === "super-admin") {
+      } else if (user.role === "admin" || user.role === "super-admin") {
         navigate("/dashboard");
       }
 
-      
       toast({
         title: "Login Successful",
         description: "Welcome back!",
       });
     } catch (error) {
-
       toast({
         title: "Login Failed",
         description: "Email or Password Incorrect. Please check and try again.",
@@ -111,7 +110,7 @@ export const LoginForm = ({ onSignupClick }: { onSignupClick: () => void }) => {
         </div>
         {errors.password && <p className="text-red-500">{errors.password.message}</p>}
       </div>
-      <Button type="submit" className="w-full">
+      <Button type="submit" className="w-full bg-repairam hover:bg-repairam-dark">
         <LogIn className="mr-2 h-4 w-4" /> Login
       </Button>
       {/* <p className="text-center text-sm text-gray-500">
