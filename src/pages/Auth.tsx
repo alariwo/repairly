@@ -14,14 +14,10 @@ const Auth = () => {
 
   const handleLogin = (data: LoginFormData) => {
     console.log("Login form submitted:", data);
-    // In a real app, you would handle authentication here
-    // For example, sending a request to your backend API
   };
 
   const handleSignup = (data: SignupFormData) => {
     console.log("Signup form submitted:", data);
-    // In a real app, you would handle user registration here
-    // For example, sending a request to your backend API
   };
 
   const switchToSignup = () => {

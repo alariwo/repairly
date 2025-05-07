@@ -1,139 +1,128 @@
-import { useState } from "react";
+import React, { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Eye, EyeOff, LogIn } from "lucide-react";
-
+import { Eye, EyeOff, LogIn, Wrench } from "lucide-react"; // Import the Wrench icon
 import { Button } from "@/components/ui/button";
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { LoginFormData } from "@/types/auth";
+import { Label } from "@/components/ui/label";
 import { toast } from "@/hooks/use-toast";
+import { useNavigate } from "react-router-dom";
 
+// Define the schema for the login form
 const loginSchema = z.object({
-  email: z.string().email({ message: "Please enter a valid email address" }),
-  password: z.string().min(6, {
-    message: "Password must be at least 6 characters",
-  }),
+  email: z.string().email("Invalid email address"),
+  password: z.string().min(6, "Password must be at least 6 characters"),
 });
 
-interface LoginFormProps {
-  onSubmit: (data: LoginFormData) => void;
-  onSignupClick: () => void;
-}
+type LoginFormData = z.infer<typeof loginSchema>;
 
-export function LoginForm({ onSubmit, onSignupClick }: LoginFormProps) {
+export const LoginForm = ({ onSignupClick }: { onSignupClick: () => void }) => {
   const [showPassword, setShowPassword] = useState(false);
-
-  const form = useForm<LoginFormData>({
+  const navigate = useNavigate();
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema),
-    defaultValues: {
-      email: "",
-      password: "",
-    },
   });
 
-  const handleSubmit = (data: LoginFormData) => {
+  const onSubmit = async (data: LoginFormData) => {
     try {
-      onSubmit(data);
-      // In a real app, you would handle login logic here
+      // Show the "Working" toast with a wrench icon
+      const workingToastId = toast({
+        title: "Waving the msgic wand.",
+        description: "Please wait while I process your request...",
+      });
+
+      // Simulate a delay to mimic server processing (optional)
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+
+      // Send the login request to the server
+      const response = await fetch("https://repairly-backend.onrender.com/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+
+      if (!response.ok) {
+        throw new Error("Invalid credentials");
+      }
+
+      const { token, user } = await response.json();
+
+      // Store the token and user role in local storage
+      localStorage.setItem("authToken", token);
+      localStorage.setItem("userRole", user.role);
+
+      // Redirect based on user role
+      if (user.role === "technician") {
+        navigate("/technician");
+      } else if (user.role === "admin") {
+        navigate("/dashboard");
+      } else if (user.role === "super-admin") {
+        navigate("/dashboard");
+      }
+
+      
       toast({
         title: "Login Successful",
         description: "Welcome back!",
       });
     } catch (error) {
+
       toast({
         title: "Login Failed",
-        description: "Please check your credentials and try again.",
+        description: "Email or Password Incorrect. Please check and try again.",
         variant: "destructive",
       });
     }
   };
 
-  const togglePasswordVisibility = () => {
-    setShowPassword(!showPassword);
-  };
-
   return (
-    <Form {...form}>
-      <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
-        <FormField
-          control={form.control}
-          name="email"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Email</FormLabel>
-              <FormControl>
-                <Input
-                  placeholder="Enter your email"
-                  {...field}
-                  autoComplete="email"
-                />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
+    <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+      <div>
+        <Label htmlFor="email">Email</Label>
+        <Input
+          id="email"
+          type="email"
+          {...register("email")}
+          placeholder="Enter your email"
         />
-        <FormField
-          control={form.control}
-          name="password"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Password</FormLabel>
-              <FormControl>
-                <div className="relative">
-                  <Input
-                    type={showPassword ? "text" : "password"}
-                    placeholder="Enter your password"
-                    {...field}
-                    autoComplete="current-password"
-                  />
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    className="absolute right-0 top-0 h-full px-3"
-                    onClick={togglePasswordVisibility}
-                  >
-                    {showPassword ? (
-                      <EyeOff className="h-4 w-4" />
-                    ) : (
-                      <Eye className="h-4 w-4" />
-                    )}
-                  </Button>
-                </div>
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        <div className="flex justify-end">
-          <Button variant="link" size="sm" className="px-0" type="button">
-            Forgot password?
-          </Button>
-        </div>
-        <Button type="submit" className="w-full">
-          <LogIn className="mr-2 h-4 w-4" /> Log In
-        </Button>
-        <div className="text-center text-sm">
-          Don't have an account?{" "}
-          <Button
-            variant="link"
-            className="p-0"
+        {errors.email && <p className="text-red-500">{errors.email.message}</p>}
+      </div>
+      <div>
+        <Label htmlFor="password">Password</Label>
+        <div className="relative">
+          <Input
+            id="password"
+            type={showPassword ? "text" : "password"}
+            {...register("password")}
+            placeholder="Enter your password"
+          />
+          <button
             type="button"
-            onClick={onSignupClick}
+            onClick={() => setShowPassword(!showPassword)}
+            className="absolute inset-y-0 right-0 flex items-center px-3 text-gray-500"
           >
-            Sign up
-          </Button>
+            {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+          </button>
         </div>
-      </form>
-    </Form>
+        {errors.password && <p className="text-red-500">{errors.password.message}</p>}
+      </div>
+      <Button type="submit" className="w-full">
+        <LogIn className="mr-2 h-4 w-4" /> Login
+      </Button>
+      {/* <p className="text-center text-sm text-gray-500">
+        Don't have an account?{" "}
+        <span
+          className="text-primary cursor-pointer"
+          onClick={onSignupClick}
+        >
+          Sign up here
+        </span>
+      </p> */}
+    </form>
   );
-}
+};

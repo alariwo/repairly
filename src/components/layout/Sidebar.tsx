@@ -1,6 +1,6 @@
 import React from 'react';
 import { cn } from '@/lib/utils';
-import { NavLink } from 'react-router-dom';
+import { NavLink, useNavigate } from 'react-router-dom';
 import {
   Home,
   Users,
@@ -14,9 +14,8 @@ import {
   DollarSign,
   Shield,
   UserCog,
-  Menu, // Add the hamburger menu icon
 } from 'lucide-react';
-import { useIsMobile } from '@/hooks/use-mobile'; // Import the useIsMobile hook
+import { useIsMobile } from '@/hooks/use-mobile';
 
 interface SidebarProps {
   className?: string;
@@ -24,8 +23,16 @@ interface SidebarProps {
 }
 
 const Sidebar = ({ className, userRole = 'admin' }: SidebarProps) => {
-  const [isNavOpen, setIsNavOpen] = React.useState(false); // State to toggle nav visibility
-  const isMobile = useIsMobile(); // Check if the screen is mobile-sized
+  const [isNavOpen, setIsNavOpen] = React.useState(false);
+  const isMobile = useIsMobile();
+  const navigate = useNavigate();
+
+  // Handle logout
+  const handleLogout = () => {
+    localStorage.removeItem('authToken');
+    localStorage.removeItem('userRole');
+    navigate('/auth'); // Redirect to the login page
+  };
 
   return (
     <>
@@ -33,17 +40,17 @@ const Sidebar = ({ className, userRole = 'admin' }: SidebarProps) => {
       {isMobile && (
         <div className="sm:hidden p-4 fixed top-0 left-0 z-50">
           <button
-            onClick={() => setIsNavOpen(!isNavOpen)} // Toggle nav visibility
-            className="text-black focus:outline-none" // Black color for the hamburger icon
+            onClick={() => setIsNavOpen(!isNavOpen)}
+            className="text-black focus:outline-none"
           >
-            <Menu className="w-4 h-4" /> {/* Smaller hamburger icon */}
+            <Wrench className="w-4 h-4" />
           </button>
         </div>
       )}
 
       {/* Sidebar Content */}
       {!isMobile || isNavOpen ? (
-        <div className={cn("h-screen w-64 bg-repairam flex flex-col text-white", className)}>
+        <div className={cn('h-screen w-64 bg-repairam flex flex-col text-white', className)}>
           {/* Header Section */}
           <div className="p-6">
             <div className="flex items-center space-x-2">
@@ -57,20 +64,17 @@ const Sidebar = ({ className, userRole = 'admin' }: SidebarProps) => {
 
           {/* Navigation Section */}
           <nav className="flex-1 px-4 space-y-1">
-            {userRole === 'super-admin' ? (
-              // Super Admin Navigation
+            {userRole === 'super-admin' && (
               <>
+                {/* Super Admin Navigation */}
                 <NavLink
-                  to="/"
+                  to="/dashboard"
                   className={({ isActive }) =>
                     cn(
-                      "flex items-center px-4 py-3 rounded-md transition-colors",
-                      isActive
-                        ? "bg-white text-repairam font-medium"
-                        : "hover:bg-repairam-dark text-white"
+                      'flex items-center px-4 py-3 rounded-md transition-colors',
+                      isActive ? 'bg-white text-repairam font-medium' : 'hover:bg-repairam-dark text-white'
                     )
                   }
-                  end
                 >
                   <Home className="w-5 h-5 mr-3" />
                   Dashboard
@@ -79,10 +83,8 @@ const Sidebar = ({ className, userRole = 'admin' }: SidebarProps) => {
                   to="/customers"
                   className={({ isActive }) =>
                     cn(
-                      "flex items-center px-4 py-3 rounded-md transition-colors",
-                      isActive
-                        ? "bg-white text-repairam font-medium"
-                        : "hover:bg-repairam-dark text-white"
+                      'flex items-center px-4 py-3 rounded-md transition-colors',
+                      isActive ? 'bg-white text-repairam font-medium' : 'hover:bg-repairam-dark text-white'
                     )
                   }
                 >
@@ -93,10 +95,8 @@ const Sidebar = ({ className, userRole = 'admin' }: SidebarProps) => {
                   to="/jobs"
                   className={({ isActive }) =>
                     cn(
-                      "flex items-center px-4 py-3 rounded-md transition-colors",
-                      isActive
-                        ? "bg-white text-repairam font-medium"
-                        : "hover:bg-repairam-dark text-white"
+                      'flex items-center px-4 py-3 rounded-md transition-colors',
+                      isActive ? 'bg-white text-repairam font-medium' : 'hover:bg-repairam-dark text-white'
                     )
                   }
                 >
@@ -107,10 +107,8 @@ const Sidebar = ({ className, userRole = 'admin' }: SidebarProps) => {
                   to="/inventory"
                   className={({ isActive }) =>
                     cn(
-                      "flex items-center px-4 py-3 rounded-md transition-colors",
-                      isActive
-                        ? "bg-white text-repairam font-medium"
-                        : "hover:bg-repairam-dark text-white"
+                      'flex items-center px-4 py-3 rounded-md transition-colors',
+                      isActive ? 'bg-white text-repairam font-medium' : 'hover:bg-repairam-dark text-white'
                     )
                   }
                 >
@@ -121,10 +119,8 @@ const Sidebar = ({ className, userRole = 'admin' }: SidebarProps) => {
                   to="/invoices"
                   className={({ isActive }) =>
                     cn(
-                      "flex items-center px-4 py-3 rounded-md transition-colors",
-                      isActive
-                        ? "bg-white text-repairam font-medium"
-                        : "hover:bg-repairam-dark text-white"
+                      'flex items-center px-4 py-3 rounded-md transition-colors',
+                      isActive ? 'bg-white text-repairam font-medium' : 'hover:bg-repairam-dark text-white'
                     )
                   }
                 >
@@ -135,10 +131,8 @@ const Sidebar = ({ className, userRole = 'admin' }: SidebarProps) => {
                   to="/messages"
                   className={({ isActive }) =>
                     cn(
-                      "flex items-center px-4 py-3 rounded-md transition-colors",
-                      isActive
-                        ? "bg-white text-repairam font-medium"
-                        : "hover:bg-repairam-dark text-white"
+                      'flex items-center px-4 py-3 rounded-md transition-colors',
+                      isActive ? 'bg-white text-repairam font-medium' : 'hover:bg-repairam-dark text-white'
                     )
                   }
                 >
@@ -149,10 +143,8 @@ const Sidebar = ({ className, userRole = 'admin' }: SidebarProps) => {
                   to="/accounting"
                   className={({ isActive }) =>
                     cn(
-                      "flex items-center px-4 py-3 rounded-md transition-colors",
-                      isActive
-                        ? "bg-white text-repairam font-medium"
-                        : "hover:bg-repairam-dark text-white"
+                      'flex items-center px-4 py-3 rounded-md transition-colors',
+                      isActive ? 'bg-white text-repairam font-medium' : 'hover:bg-repairam-dark text-white'
                     )
                   }
                 >
@@ -163,10 +155,8 @@ const Sidebar = ({ className, userRole = 'admin' }: SidebarProps) => {
                   to="/user-management"
                   className={({ isActive }) =>
                     cn(
-                      "flex items-center px-4 py-3 rounded-md transition-colors",
-                      isActive
-                        ? "bg-white text-repairam font-medium"
-                        : "hover:bg-repairam-dark text-white"
+                      'flex items-center px-4 py-3 rounded-md transition-colors',
+                      isActive ? 'bg-white text-repairam font-medium' : 'hover:bg-repairam-dark text-white'
                     )
                   }
                 >
@@ -174,20 +164,19 @@ const Sidebar = ({ className, userRole = 'admin' }: SidebarProps) => {
                   User Management
                 </NavLink>
               </>
-            ) : userRole === 'admin' ? (
-              // Admin Navigation
+            )}
+
+            {userRole === 'admin' && (
               <>
+                {/* Admin Navigation */}
                 <NavLink
-                  to="/"
+                  to="/dashboard"
                   className={({ isActive }) =>
                     cn(
-                      "flex items-center px-4 py-3 rounded-md transition-colors",
-                      isActive
-                        ? "bg-white text-repairam font-medium"
-                        : "hover:bg-repairam-dark text-white"
+                      'flex items-center px-4 py-3 rounded-md transition-colors',
+                      isActive ? 'bg-white text-repairam font-medium' : 'hover:bg-repairam-dark text-white'
                     )
                   }
-                  end
                 >
                   <Home className="w-5 h-5 mr-3" />
                   Dashboard
@@ -196,10 +185,8 @@ const Sidebar = ({ className, userRole = 'admin' }: SidebarProps) => {
                   to="/customers"
                   className={({ isActive }) =>
                     cn(
-                      "flex items-center px-4 py-3 rounded-md transition-colors",
-                      isActive
-                        ? "bg-white text-repairam font-medium"
-                        : "hover:bg-repairam-dark text-white"
+                      'flex items-center px-4 py-3 rounded-md transition-colors',
+                      isActive ? 'bg-white text-repairam font-medium' : 'hover:bg-repairam-dark text-white'
                     )
                   }
                 >
@@ -210,10 +197,8 @@ const Sidebar = ({ className, userRole = 'admin' }: SidebarProps) => {
                   to="/jobs"
                   className={({ isActive }) =>
                     cn(
-                      "flex items-center px-4 py-3 rounded-md transition-colors",
-                      isActive
-                        ? "bg-white text-repairam font-medium"
-                        : "hover:bg-repairam-dark text-white"
+                      'flex items-center px-4 py-3 rounded-md transition-colors',
+                      isActive ? 'bg-white text-repairam font-medium' : 'hover:bg-repairam-dark text-white'
                     )
                   }
                 >
@@ -224,10 +209,8 @@ const Sidebar = ({ className, userRole = 'admin' }: SidebarProps) => {
                   to="/inventory"
                   className={({ isActive }) =>
                     cn(
-                      "flex items-center px-4 py-3 rounded-md transition-colors",
-                      isActive
-                        ? "bg-white text-repairam font-medium"
-                        : "hover:bg-repairam-dark text-white"
+                      'flex items-center px-4 py-3 rounded-md transition-colors',
+                      isActive ? 'bg-white text-repairam font-medium' : 'hover:bg-repairam-dark text-white'
                     )
                   }
                 >
@@ -238,10 +221,8 @@ const Sidebar = ({ className, userRole = 'admin' }: SidebarProps) => {
                   to="/invoices"
                   className={({ isActive }) =>
                     cn(
-                      "flex items-center px-4 py-3 rounded-md transition-colors",
-                      isActive
-                        ? "bg-white text-repairam font-medium"
-                        : "hover:bg-repairam-dark text-white"
+                      'flex items-center px-4 py-3 rounded-md transition-colors',
+                      isActive ? 'bg-white text-repairam font-medium' : 'hover:bg-repairam-dark text-white'
                     )
                   }
                 >
@@ -252,10 +233,8 @@ const Sidebar = ({ className, userRole = 'admin' }: SidebarProps) => {
                   to="/messages"
                   className={({ isActive }) =>
                     cn(
-                      "flex items-center px-4 py-3 rounded-md transition-colors",
-                      isActive
-                        ? "bg-white text-repairam font-medium"
-                        : "hover:bg-repairam-dark text-white"
+                      'flex items-center px-4 py-3 rounded-md transition-colors',
+                      isActive ? 'bg-white text-repairam font-medium' : 'hover:bg-repairam-dark text-white'
                     )
                   }
                 >
@@ -266,10 +245,8 @@ const Sidebar = ({ className, userRole = 'admin' }: SidebarProps) => {
                   to="/user-management"
                   className={({ isActive }) =>
                     cn(
-                      "flex items-center px-4 py-3 rounded-md transition-colors",
-                      isActive
-                        ? "bg-white text-repairam font-medium"
-                        : "hover:bg-repairam-dark text-white"
+                      'flex items-center px-4 py-3 rounded-md transition-colors',
+                      isActive ? 'bg-white text-repairam font-medium' : 'hover:bg-repairam-dark text-white'
                     )
                   }
                 >
@@ -277,17 +254,17 @@ const Sidebar = ({ className, userRole = 'admin' }: SidebarProps) => {
                   User Management
                 </NavLink>
               </>
-            ) : (
-              // Technician Navigation
+            )}
+
+            {userRole === 'technician' && (
               <>
+                {/* Technician Navigation */}
                 <NavLink
                   to="/technician"
                   className={({ isActive }) =>
                     cn(
-                      "flex items-center px-4 py-3 rounded-md transition-colors",
-                      isActive
-                        ? "bg-white text-repairam font-medium"
-                        : "hover:bg-repairam-dark text-white"
+                      'flex items-center px-4 py-3 rounded-md transition-colors',
+                      isActive ? 'bg-white text-repairam font-medium' : 'hover:bg-repairam-dark text-white'
                     )
                   }
                 >
@@ -298,15 +275,13 @@ const Sidebar = ({ className, userRole = 'admin' }: SidebarProps) => {
                   to="/technician-analytics"
                   className={({ isActive }) =>
                     cn(
-                      "flex items-center px-4 py-3 rounded-md transition-colors",
-                      isActive
-                        ? "bg-white text-repairam font-medium"
-                        : "hover:bg-repairam-dark text-white"
+                      'flex items-center px-4 py-3 rounded-md transition-colors',
+                      isActive ? 'bg-white text-repairam font-medium' : 'hover:bg-repairam-dark text-white'
                     )
                   }
                 >
-                  <Clipboard className="w-5 h-5 mr-3" />
-                  Repair Logs
+                  <Shield className="w-5 h-5 mr-3" />
+                  Analytics
                 </NavLink>
               </>
             )}
@@ -318,17 +293,18 @@ const Sidebar = ({ className, userRole = 'admin' }: SidebarProps) => {
               to="/settings"
               className={({ isActive }) =>
                 cn(
-                  "flex items-center px-4 py-3 rounded-md transition-colors",
-                  isActive
-                    ? "bg-white text-repairam font-medium"
-                    : "hover:bg-repairam-dark text-white"
+                  'flex items-center px-4 py-3 rounded-md transition-colors',
+                  isActive ? 'bg-white text-repairam font-medium' : 'hover:bg-repairam-dark text-white'
                 )
               }
             >
               <Settings className="w-5 h-5 mr-3" />
               Settings
             </NavLink>
-            <button className="flex items-center px-4 py-3 rounded-md hover:bg-repairam-dark text-white w-full mt-2">
+            <button
+              className="flex items-center px-4 py-3 rounded-md hover:bg-repairam-dark text-white w-full mt-2"
+              onClick={handleLogout}
+            >
               <LogOut className="w-5 h-5 mr-3" />
               Logout
             </button>
