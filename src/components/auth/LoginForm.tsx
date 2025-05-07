@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -18,7 +18,7 @@ const loginSchema = z.object({
 type LoginFormData = z.infer<typeof loginSchema>;
 
 export const LoginForm = ({ onSignupClick }: { onSignupClick: () => void }) => {
-  const [showPassword, setShowPassword] = useState(false);
+  const [showPassword, setShowPassword] = React.useState(false);
   const navigate = useNavigate();
   const {
     register,
@@ -27,70 +27,6 @@ export const LoginForm = ({ onSignupClick }: { onSignupClick: () => void }) => {
   } = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema),
   });
-
-  // State to track inactivity
-  const [inactivityTimer, setInactivityTimer] = useState<ReturnType<typeof setTimeout> | null>(null);
-
-  // Function to reset the inactivity timer
-  const resetInactivityTimer = () => {
-    if (inactivityTimer) {
-      clearTimeout(inactivityTimer);
-    }
-    const newTimer = setTimeout(() => {
-      handleLogout();
-    }, 120000); // 2 minutes (120000 ms)
-    setInactivityTimer(newTimer);
-  };
-
-  // Function to log out the user
-  const handleLogout = () => {
-    // Clear the inactivity timer to prevent multiple triggers
-    if (inactivityTimer) {
-      clearTimeout(inactivityTimer);
-    }
-
-    // Clear authentication data
-    localStorage.removeItem("authToken");
-    localStorage.removeItem("userRole");
-
-    // Notify other components about logout
-    window.dispatchEvent(new CustomEvent("user-logged-out"));
-
-    // Redirect to the login page
-    navigate("/auth", { replace: true });
-
-    // Show the toast message only once
-    toast({
-      title: "Session Expired",
-      description: "You have been logged out due to inactivity.",
-      variant: "destructive",
-    });
-  };
-
-  // Add event listeners for user activity
-  useEffect(() => {
-    const handleUserActivity = () => {
-      resetInactivityTimer();
-    };
-
-    // Attach event listeners
-    window.addEventListener("mousemove", handleUserActivity);
-    window.addEventListener("keydown", handleUserActivity);
-    window.addEventListener("click", handleUserActivity);
-
-    // Initialize the inactivity timer
-    resetInactivityTimer();
-
-    // Cleanup event listeners and timers on unmount
-    return () => {
-      window.removeEventListener("mousemove", handleUserActivity);
-      window.removeEventListener("keydown", handleUserActivity);
-      window.removeEventListener("click", handleUserActivity);
-      if (inactivityTimer) {
-        clearTimeout(inactivityTimer);
-      }
-    };
-  }, [inactivityTimer]);
 
   const onSubmit = async (data: LoginFormData) => {
     try {
@@ -125,9 +61,9 @@ export const LoginForm = ({ onSignupClick }: { onSignupClick: () => void }) => {
 
       // Redirect based on user role
       if (user.role === "technician") {
-        navigate("/technician", { replace: true });
+        navigate("/technician");
       } else if (user.role === "admin" || user.role === "super-admin") {
-        navigate("/dashboard", { replace: true });
+        navigate("/dashboard");
       }
 
       toast({
