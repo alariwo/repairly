@@ -516,7 +516,8 @@ const Customers = () => {
               </div>
               <div>
                 <h4 className="text-sm font-medium mb-1">Total Spent</h4>
-                <p>₦{selectedCustomer.totalSpent}</p>
+                <p>₦{(Number(selectedCustomer.totalSpent) || 0).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+  </p>
               </div>
             </div>
             <DialogFooter>

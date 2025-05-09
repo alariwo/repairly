@@ -1,14 +1,36 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import React, { useState, useEffect, useCallback } from 'react';
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { PlusCircle, Search, Filter, MoreHorizontal, Clipboard, Bell, FileText, Tag, Calendar, MapPin, Flag, CalendarDays, UserRound, ListFilter, ClipboardList } from 'lucide-react';
-import { 
+import {
+  PlusCircle,
+  Search,
+  Filter,
+  MoreHorizontal,
+  Clipboard,
+  Bell,
+  FileText,
+  Tag,
+  Calendar,
+  MapPin,
+  Flag,
+  CalendarDays,
+  UserRound,
+  ListFilter,
+  ClipboardList,
+  Trash2,
+} from 'lucide-react';
+import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  DropdownMenuSeparator
+  DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
 import {
   Select,
@@ -16,124 +38,88 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
+} from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { JobPrintables } from '@/components/jobs/JobPrintables';
 import { sendEmailNotification } from '@/utils/notifications';
-import { 
-  Dialog, 
-  DialogContent, 
-  DialogHeader, 
-  DialogTitle, 
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
   DialogFooter,
-  DialogDescription
-} from "@/components/ui/dialog";
+  DialogDescription,
+} from '@/components/ui/dialog';
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from "@/components/ui/popover";
-import { Calendar as CalendarComponent } from "@/components/ui/calendar";
-import { format } from "date-fns";
-import { Label } from "@/components/ui/label";
+} from '@/components/ui/popover';
+import { Calendar as CalendarComponent } from '@/components/ui/calendar';
+import { format } from 'date-fns';
+import { Label } from '@/components/ui/label';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { useLocalStorage } from '@/hooks/use-local-storage';
-import { cn } from "@/lib/utils";
+import { cn } from '@/lib/utils';
 import { Textarea } from '@/components/ui/textarea';
 
-const initialJobs = [
-  {
-    id: 'JOB-1001',
-    customer: 'John Smith',
-    device: 'iPhone 12',
-    issue: 'Cracked Screen',
-    status: 'picked-up',
-    priority: 'high',
-    createdAt: '2025-04-10',
-    dueDate: '2025-04-15',
-    assignedTo: 'Mike Technician',
-    hasNotification: true,
-    serialNumber: 'SN12345678',
-    customerEmail: 'john.smith@example.com',
-    phoneNumber: '555-123-4567'
-  },
-  {
-    id: 'JOB-1002',
-    customer: 'Sarah Johnson',
-    device: 'MacBook Pro',
-    issue: 'Battery Replacement',
-    status: 'diagnosis',
-    priority: 'medium',
-    createdAt: '2025-04-09',
-    dueDate: '2025-04-16',
-    assignedTo: 'Lisa Technician',
-    hasNotification: false,
-    serialNumber: 'C02XL0GHJGH5',
-    customerEmail: 'sarah.j@example.com',
-    phoneNumber: '555-234-5678'
-  },
-  {
-    id: 'JOB-1003',
-    customer: 'Michael Brown',
-    device: 'Samsung Galaxy S21',
-    issue: 'Charging Port',
-    status: 'repair-in-progress',
-    priority: 'medium',
-    createdAt: '2025-04-08',
-    dueDate: '2025-04-18',
-    assignedTo: 'Mike Technician',
-    hasNotification: false,
-    serialNumber: 'RZ8G61LCX2P',
-    customerEmail: 'michael.b@example.com',
-    phoneNumber: '555-345-6789'
-  },
-  {
-    id: 'JOB-1004',
-    customer: 'Emily Davis',
-    device: 'Dell XPS 13',
-    issue: 'Virus Removal',
-    status: 'repair-completed',
-    priority: 'low',
-    createdAt: '2025-04-07',
-    dueDate: '2025-04-11',
-    assignedTo: 'Lisa Technician',
-    hasNotification: true,
-    serialNumber: 'JN2YRNM',
-    customerEmail: 'emily.d@example.com',
-    phoneNumber: '555-456-7890'
-  },
-  {
-    id: 'JOB-1005',
-    customer: 'David Wilson',
-    device: 'iPad Pro',
-    issue: 'Broken Home Button',
-    status: 'ready-for-delivery',
-    priority: 'high',
-    createdAt: '2025-04-06',
-    dueDate: '2025-04-13',
-    assignedTo: 'Mike Technician',
-    hasNotification: true,
-    serialNumber: 'DMPWH8MYHJKT',
-    customerEmail: 'david.w@example.com',
-    phoneNumber: '555-567-8901'
-  },
-];
+interface Technician {
+  name: string;
+}
+
+interface Customer {
+  id: number;
+  name: string;
+  email: string;
+  phone: string;
+  location: string;
+  jobsCompleted: number;
+  totalSpent: number;
+  lastJob: string;
+}
+
+interface Job {
+  _id?: string;
+  id: string;
+  customer: string;
+  device: string;
+  issue: string;
+  serialNumber?: string;
+  customerEmail?: string;
+  phoneNumber?: string;
+  address?: string;
+  priority: string;
+  dueDate: string | Date;
+  status: string;
+  assignedTo: string;
+  hasNotification: boolean;
+  createdAt?: string;
+}
 
 const Jobs = () => {
   const { toast } = useToast();
   const location = useLocation();
   const navigate = useNavigate();
+
+  const [jobs, setJobs] = useState<Job[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
+  const [isNewJobDialogOpen, setIsNewJobDialogOpen] = useState(false);
+  const [jobToUpdate, setJobToUpdate] = useState<Job | null>(null);
+  const [updatedJob, setUpdatedJob] = useState<Partial<Job>>({});
   const [statusFilter, setStatusFilter] = useState('all');
   const [priorityFilter, setPriorityFilter] = useState('all');
   const [technicianFilter, setTechnicianFilter] = useState('all');
   const [dateFilter, setDateFilter] = useState<Date | undefined>(undefined);
   const [isFilterExpanded, setIsFilterExpanded] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
-  const [isNewJobDialogOpen, setIsNewJobDialogOpen] = useState(false);
-  const [localJobs, setLocalJobs] = useLocalStorage('repair-app-jobs', initialJobs);
+  const [technicians, setTechnicians] = useState<Technician[]>([]);
+  const [customers, setCustomers] = useState<Customer[]>([]);
+
+  // New state for pagination
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
+
   const [newJob, setNewJob] = useState({
     customer: '',
     device: '',
@@ -143,198 +129,342 @@ const Jobs = () => {
     phoneNumber: '',
     address: '',
     priority: 'medium',
-    dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
+    dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
   });
-  const [activeJob, setActiveJob] = useState<string | null>(null);
+
+  // Additional state variables
+  const [jobToView, setJobToView] = useState<Job | null>(null);
   const [jobDetailsDialogOpen, setJobDetailsDialogOpen] = useState(false);
-  const [jobToView, setJobToView] = useState<typeof initialJobs[0] | null>(null);
-  const [localCustomers, setLocalCustomers] = useLocalStorage('repair-app-customers', []);
-  const [statusUpdateDialogOpen, setStatusUpdateDialogOpen] = useState(false);
-  const [jobToUpdate, setJobToUpdate] = useState<null | typeof initialJobs[0]>(null);
-  const [newStatus, setNewStatus] = useState('');
-  const [statusUpdateNote, setStatusUpdateNote] = useState('');
-  const dialogRef = useRef<HTMLDivElement>(null);
+  const [jobToAssign, setJobToAssign] = useState<Job | null>(null);
+  const [selectedTechnician, setSelectedTechnician] = useState<string>('');
   const [isAssignDialogOpen, setIsAssignDialogOpen] = useState(false);
-  const [jobToAssign, setJobToAssign] = useState<null | typeof initialJobs[0]>(null);
-  const [selectedTechnician, setSelectedTechnician] = useState('');
+  const [statusUpdateDialogOpen, setStatusUpdateDialogOpen] = useState(false);
+  const [newStatus, setNewStatus] = useState<string>('');
+  const [statusUpdateNote, setStatusUpdateNote] = useState('');
 
-  const technicians = React.useMemo(() => {
-    const techSet = new Set(localJobs.map(job => job.assignedTo));
-    return Array.from(techSet);
-  }, [localJobs]);
+  // Helper function to get auth token
+  const getAuthToken = () => localStorage.getItem('authToken');
 
-  const safeCloseJobDetailsDialog = useCallback(() => {
-    setJobDetailsDialogOpen(false);
-    setTimeout(() => {
-      navigate('/jobs', { replace: true });
-      setJobToView(null);
-    }, 10);
-  }, [navigate]);
+  // Fetch all jobs
+  const fetchJobs = async () => {
+    try {
+      const authToken = getAuthToken();
+      if (!authToken) throw new Error('Authentication token is missing');
 
-  useEffect(() => {
-    const params = new URLSearchParams(location.search);
-    const jobId = params.get('jobId');
-    
-    if (jobId) {
-      const job = localJobs.find(j => j.id === jobId);
-      if (job) {
-        setJobToView(job);
-        setJobDetailsDialogOpen(true);
-      }
+      const response = await fetch('https://repairly-backend.onrender.com/api/jobs ', {
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${authToken}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) throw new Error('Failed to fetch jobs');
+
+      const data = await response.json();
+      setJobs(data);
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to load jobs.',
+        variant: 'destructive',
+      });
     }
-
-    const handleOpenNewJobDialog = (event: Event) => {
-      const customEvent = event as CustomEvent;
-      if (customEvent.detail) {
-        const { customer, email, phone } = customEvent.detail;
-        setNewJob(prev => ({
-          ...prev,
-          customer: customer || prev.customer,
-          customerEmail: email || prev.customerEmail,
-          phoneNumber: phone || prev.phoneNumber
-        }));
-      }
-      setIsNewJobDialogOpen(true);
-    };
-    
-    window.addEventListener('open-new-job-dialog', handleOpenNewJobDialog);
-    
-    return () => {
-      window.removeEventListener('open-new-job-dialog', handleOpenNewJobDialog);
-    };
-  }, [location.search, localJobs]);
-
-  const handleNewJob = () => {
-    setNewJob({
-      customer: '',
-      device: '',
-      issue: '',
-      serialNumber: '',
-      customerEmail: '',
-      phoneNumber: '',
-      address: '',
-      priority: 'medium',
-      dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
-    });
-    setIsNewJobDialogOpen(true);
   };
 
-  const handleCreateJob = () => {
-    if (!newJob.customer || !newJob.device || !newJob.issue || !newJob.customerEmail) {
+  // Fetch customers
+  const fetchCustomers = async () => {
+    try {
+      const authToken = getAuthToken();
+      if (!authToken) throw new Error('Authentication token is missing');
+
+      const response = await fetch('https://repairly-backend.onrender.com/api/customers ', {
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${authToken}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) throw new Error('Failed to fetch customers');
+
+      const data = await response.json();
+      setCustomers(data);
+    } catch (error) {
       toast({
-        title: "Missing Information",
-        description: "Please fill in all required fields.",
-        variant: "destructive"
+        title: 'Error',
+        description: error.message || 'Failed to load customers.',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  // Fetch technicians
+  const fetchTechnicians = async () => {
+    try {
+      const authToken = getAuthToken();
+      if (!authToken) throw new Error('Authentication token is missing');
+
+      const response = await fetch('https://repairly-backend.onrender.com/api/user/users?role=technician ', {
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${authToken}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) throw new Error('Failed to fetch technicians');
+
+      const result = await response.json();
+
+      if (Array.isArray(result.users)) {
+        setTechnicians(result.users.map(u => ({ name: u.name })));
+      } else {
+        throw new Error('Unexpected technician data format');
+      }
+
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to load technicians.',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  // Create a new job via API
+  const handleCreateJob = async () => {
+    if (
+      !newJob.customer ||
+      !newJob.device ||
+      !newJob.issue ||
+      !newJob.dueDate ||
+      !newJob.customerEmail
+    ) {
+      toast({
+        title: 'Missing Information',
+        description: 'Please fill in all required fields.',
+        variant: 'destructive',
       });
       return;
     }
-    
-    const jobId = `JOB-${Math.floor(1000 + Math.random() * 9000)}`;
-    const createdJob = {
-      ...newJob,
-      id: jobId,
-      status: 'received',
-      createdAt: new Date().toISOString().split('T')[0],
-      dueDate: newJob.dueDate instanceof Date 
-        ? newJob.dueDate.toISOString().split('T')[0] 
-        : newJob.dueDate,
-      assignedTo: 'Unassigned',
-      hasNotification: false
-    };
-    
-    setLocalJobs([createdJob, ...localJobs]);
-    
-    const existingCustomerIndex = localCustomers.findIndex(
-      c => c.email === newJob.customerEmail
-    );
-    
-    if (existingCustomerIndex >= 0) {
-      const updatedCustomers = [...localCustomers];
-      updatedCustomers[existingCustomerIndex] = {
-        ...updatedCustomers[existingCustomerIndex],
-        name: newJob.customer,
-        email: newJob.customerEmail,
-        phone: newJob.phoneNumber || updatedCustomers[existingCustomerIndex].phone,
-        location: newJob.address || updatedCustomers[existingCustomerIndex].location,
-        jobsCompleted: updatedCustomers[existingCustomerIndex].jobsCompleted,
-        totalSpent: updatedCustomers[existingCustomerIndex].totalSpent,
-        lastJob: new Date().toISOString().split('T')[0]
-      };
-      setLocalCustomers(updatedCustomers);
-    } else {
-      const newCustomer = {
-        id: localCustomers.length > 0 ? Math.max(...localCustomers.map(c => c.id)) + 1 : 1,
-        name: newJob.customer,
-        email: newJob.customerEmail,
-        phone: newJob.phoneNumber || '',
-        location: newJob.address || '',
-        jobsCompleted: 0,
-        totalSpent: 0,
-        lastJob: new Date().toISOString().split('T')[0]
-      };
-      setLocalCustomers([newCustomer, ...localCustomers]);
-    }
-    
-    setNewJob({
-      customer: '',
-      device: '',
-      issue: '',
-      serialNumber: '',
-      customerEmail: '',
-      phoneNumber: '',
-      address: '',
-      priority: 'medium',
-      dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
-    });
-    
-    setTimeout(() => {
+
+    try {
+      const authToken = getAuthToken();
+      if (!authToken) throw new Error('Authentication token is missing');
+
+      const jobId = `JOB-${Math.floor(1000 + Math.random() * 9000)}`;
+      const response = await fetch('https://repairly-backend.onrender.com/api/jobs ', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${authToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          ...newJob,
+          id: jobId,
+          status: 'received',
+          assignedTo: 'Unassigned',
+          hasNotification: false,
+        }),
+      });
+
+      if (!response.ok) throw new Error('Failed to create job');
+
+      const createdJob = await response.json();
+      setJobs([createdJob, ...jobs]);
       setIsNewJobDialogOpen(false);
-      
+
       toast({
-        title: "Job Created",
+        title: 'Job Created',
         description: `New repair job ${jobId} has been created successfully.`,
       });
-    }, 10);
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to create job.',
+        variant: 'destructive',
+      });
+    }
   };
 
+  // Update job status
+  const handleUpdateJobStatus = async () => {
+    if (!jobToUpdate || !newStatus) return;
+
+    try {
+      const authToken = getAuthToken();
+      if (!authToken) throw new Error('Authentication token is missing');
+
+      const response = await fetch(`https://repairly-backend.onrender.com/api/jobs/${jobToUpdate.id}`, {
+        method: 'PUT',
+        headers: {
+          Authorization: `Bearer ${authToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ status: newStatus }),
+      });
+
+      if (!response.ok) throw new Error('Failed to update job status');
+
+      const updatedJobData = await response.json();
+      setJobs(jobs.map(job => (job.id === jobToUpdate.id ? updatedJobData : job)));
+      setJobToUpdate(null);
+      setStatusUpdateDialogOpen(false);
+
+      try {
+        await sendEmailNotification(jobToUpdate.customerEmail, jobToUpdate.id, newStatus);
+        toast({
+          title: 'Email Notification Sent',
+          description: `Customer has been notified about status change for job ${jobToUpdate.id}`,
+        });
+      } catch (emailError) {
+        toast({
+          title: 'Email Failed',
+          description: 'Failed to send email to customer',
+          variant: 'destructive',
+        });
+      }
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to update job status.',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  // ✅ Assign Job Function (Updated to communicate with backend)
+  const handleAssignJob = async () => {
+    if (!jobToAssign || !selectedTechnician) return;
+
+    try {
+      const authToken = getAuthToken();
+      if (!authToken) throw new Error('Authentication token is missing');
+
+      const response = await fetch(`https://repairly-backend.onrender.com/api/jobs/${jobToAssign.id}`, {
+        method: 'PUT',
+        headers: {
+          Authorization: `Bearer ${authToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ assignedTo: selectedTechnician }),
+      });
+
+      if (!response.ok) throw new Error('Failed to assign job');
+
+      const updatedJob = await response.json();
+      setJobs(jobs.map(job => (job.id === jobToAssign.id ? updatedJob : job)));
+      setIsAssignDialogOpen(false);
+      setJobToAssign(null);
+
+      toast({
+        title: 'Job Assigned',
+        description: `Job ${jobToAssign.id} has been assigned to ${selectedTechnician}`,
+      });
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to assign job.',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  // Delete job
+  const handleDeleteJob = async (jobId: string) => {
+    try {
+      const authToken = getAuthToken();
+      if (!authToken) throw new Error('Authentication token is missing');
+
+      const response = await fetch(`https://repairly-backend.onrender.com/api/jobs/${jobId}`, {
+        method: 'DELETE',
+        headers: {
+          Authorization: `Bearer ${authToken}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) throw new Error('Failed to delete job');
+
+      const result = await response.json();
+      if (result.message && result.message.includes('successfully')) {
+        setJobs(jobs.filter(job => job.id !== jobId));
+        toast({ title: 'Job Deleted', description: `Job ${jobId} has been deleted.` });
+      } else {
+        throw new Error('Unexpected server response.');
+      }
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to delete job.',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  // Initialize on mount
+  useEffect(() => {
+    fetchJobs();
+    fetchCustomers();
+    fetchTechnicians();
+  }, []);
+
+  // Handle filter date change
+  useEffect(() => {
+    if (dateFilter) {
+      const filtered = jobs.filter(job => {
+        const jobDate = new Date(job.dueDate);
+        const filterDate = new Date(dateFilter);
+        return (
+          jobDate.getDate() === filterDate.getDate() &&
+          jobDate.getMonth() === filterDate.getMonth() &&
+          jobDate.getFullYear() === filterDate.getFullYear()
+        );
+      });
+      // You can do something with filtered results here
+    }
+  }, [dateFilter]);
+
+  // Get status badge component
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'picked-up':
-        return <Badge variant="outline" className="bg-purple-100 text-purple-800 border-purple-200">Picked Up</Badge>;
+        return <Badge className="bg-purple-100 text-purple-800 border-purple-200">Picked Up</Badge>;
       case 'received':
-        return <Badge variant="outline" className="bg-yellow-100 text-yellow-800 border-yellow-200">Received</Badge>;
+        return <Badge className="bg-yellow-100 text-yellow-800 border-yellow-200">Received</Badge>;
       case 'diagnosis':
-        return <Badge variant="outline" className="bg-orange-100 text-orange-800 border-orange-200">Under Diagnosis</Badge>;
+        return <Badge className="bg-orange-100 text-orange-800 border-orange-200">Under Diagnosis</Badge>;
       case 'repair-in-progress':
-        return <Badge variant="outline" className="bg-blue-100 text-blue-800 border-blue-200">Repair In Progress</Badge>;
+        return <Badge className="bg-blue-100 text-blue-800 border-blue-200">Repair In Progress</Badge>;
       case 'repair-completed':
-        return <Badge variant="outline" className="bg-green-100 text-green-800 border-green-200">Repair Completed</Badge>;
+        return <Badge className="bg-green-100 text-green-800 border-green-200">Repair Completed</Badge>;
       case 'stress-test':
-        return <Badge variant="outline" className="bg-indigo-100 text-indigo-800 border-indigo-200">Stress Test</Badge>;
+        return <Badge className="bg-indigo-100 text-indigo-800 border-indigo-200">Stress Test</Badge>;
       case 'ready-for-delivery':
-        return <Badge variant="outline" className="bg-teal-100 text-teal-800 border-teal-200">Ready for Delivery</Badge>;
+        return <Badge className="bg-teal-100 text-teal-800 border-teal-200">Ready for Delivery</Badge>;
       case 'delivered':
-        return <Badge variant="outline" className="bg-gray-100 text-gray-800 border-gray-200">Delivered</Badge>;
-      case 'completed':
-        return <Badge variant="outline" className="bg-green-200 text-green-900 border-green-300">Completed</Badge>;
+        return <Badge className="bg-gray-100 text-gray-800 border-gray-200">Delivered</Badge>;
       default:
-        return <Badge variant="outline" className="bg-gray-100 text-gray-800 border-gray-200">{status}</Badge>;
+        return <Badge className="bg-gray-100 text-gray-800 border-gray-200">{status}</Badge>;
     }
   };
 
+  // Get priority badge component
   const getPriorityBadge = (priority: string) => {
     switch (priority) {
       case 'high':
-        return <Badge variant="outline" className="bg-red-100 text-red-800 border-red-200">High</Badge>;
+        return <Badge className="bg-red-100 text-red-800 border-red-200">High</Badge>;
       case 'medium':
-        return <Badge variant="outline" className="bg-orange-100 text-orange-800 border-orange-200">Medium</Badge>;
+        return <Badge className="bg-orange-100 text-orange-800 border-orange-200">Medium</Badge>;
       case 'low':
-        return <Badge variant="outline" className="bg-green-100 text-green-800 border-green-200">Low</Badge>;
+        return <Badge className="bg-green-100 text-green-800 border-green-200">Low</Badge>;
       default:
-        return <Badge variant="outline" className="bg-gray-100 text-gray-800 border-gray-200">{priority}</Badge>;
+        return <Badge className="bg-gray-100 text-gray-800 border-gray-200">{priority}</Badge>;
     }
   };
 
+  // Clear all filters
   const clearFilters = () => {
     setStatusFilter('all');
     setPriorityFilter('all');
@@ -343,32 +473,21 @@ const Jobs = () => {
     setSearchTerm('');
   };
 
-  const filteredJobs = localJobs.filter(job => {
-    if (statusFilter !== 'all' && job.status !== statusFilter) {
-      return false;
-    }
-    
-    if (priorityFilter !== 'all' && job.priority !== priorityFilter) {
-      return false;
-    }
-    
-    if (technicianFilter !== 'all' && job.assignedTo !== technicianFilter) {
-      return false;
-    }
-    
+  // Filter jobs
+  const filteredJobs = jobs.filter((job) => {
+    if (statusFilter !== 'all' && job.status !== statusFilter) return false;
+    if (priorityFilter !== 'all' && job.priority !== priorityFilter) return false;
+    if (technicianFilter !== 'all' && job.assignedTo !== technicianFilter) return false;
     if (dateFilter) {
       const jobDate = new Date(job.dueDate);
       const filterDate = new Date(dateFilter);
-      
       if (
         jobDate.getDate() !== filterDate.getDate() ||
         jobDate.getMonth() !== filterDate.getMonth() ||
         jobDate.getFullYear() !== filterDate.getFullYear()
-      ) {
+      )
         return false;
-      }
     }
-    
     return (
       job.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
       job.customer.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -378,238 +497,154 @@ const Jobs = () => {
     );
   });
 
-  const notificationJobs = localJobs.filter(job => job.hasNotification);
-  
-  const handleClearNotifications = () => {
-    setShowNotifications(false);
-    setLocalJobs(localJobs.map(job => ({
-      ...job,
-      hasNotification: false
-    })));
-    toast({
-      title: "Notifications Cleared",
-      description: "All notifications have been marked as read.",
-    });
-  };
+  // 🔢 Pagination logic
+  const indexOfLastJob = currentPage * itemsPerPage;
+  const indexOfFirstJob = indexOfLastJob - itemsPerPage;
+  const currentJobs = filteredJobs.slice(indexOfFirstJob, indexOfLastJob);
+  const totalPages = Math.ceil(filteredJobs.length / itemsPerPage);
 
-  const handleStatusChange = async (jobId: string, newStatus: string) => {
-    const job = localJobs.find(j => j.id === jobId);
-    if (!job) return;
-    
-    const updatedJobs = localJobs.map(j => 
-      j.id === jobId 
-        ? { ...j, status: newStatus } 
-        : j
-    );
-    setLocalJobs(updatedJobs);
-    
-    toast({
-      title: "Status Updated",
-      description: `Job ${jobId} status changed to ${newStatus.replace('-', ' ')}`,
-    });
-    
-    if (newStatus === 'ready-for-delivery' || newStatus === 'completed') {
-      try {
-        await sendEmailNotification(job.customerEmail, job.id, newStatus);
-        toast({
-          title: "Email Notification Sent",
-          description: `Customer has been notified about status change for job ${jobId}`,
-        });
-      } catch (error) {
-        toast({
-          title: "Email Failed",
-          description: "Failed to send email notification to customer",
-          variant: "destructive"
-        });
-      }
+  const paginate = (pageNumber: number) => {
+    if (pageNumber >= 1 && pageNumber <= totalPages) {
+      setCurrentPage(pageNumber);
     }
   };
 
-  const handleViewDetails = useCallback((job: typeof initialJobs[0]) => {
+  const notificationJobs = jobs.filter(job => job.hasNotification);
+
+  // Clear all notifications
+  const handleClearNotifications = () => {
+    setShowNotifications(false);
+    setJobs(jobs.map(job => ({ ...job, hasNotification: false })));
+    toast({ title: "Notifications Cleared", description: "All notifications have been marked as read." });
+  };
+
+  // Open view job details dialog
+  const handleViewDetails = (job: Job) => {
     setJobToView(job);
     setJobDetailsDialogOpen(true);
-    navigate(`/jobs?jobId=${job.id}`, { replace: true });
-  }, [navigate]);
+  };
 
-  const openStatusUpdateDialog = (job: typeof initialJobs[0]) => {
+  // Open status update dialog
+  const openStatusUpdateDialog = (job: Job) => {
     setJobToUpdate(job);
     setNewStatus(job.status);
     setStatusUpdateNote('');
     setStatusUpdateDialogOpen(true);
   };
 
+  // Submit status update
   const handleStatusUpdateSubmit = () => {
     if (!jobToUpdate || newStatus === jobToUpdate.status) return;
-    
-    const updatedJobs = localJobs.map(job => 
-      job.id === jobToUpdate.id 
-        ? { ...job, status: newStatus } 
-        : job
+    setJobs(
+      jobs.map(job =>
+        job.id === jobToUpdate.id ? { ...job, status: newStatus } : job
+      )
     );
-    
-    setLocalJobs(updatedJobs);
     setStatusUpdateDialogOpen(false);
-    
-    toast({
-      title: "Status Updated",
-      description: `Job ${jobToUpdate.id} status changed to ${newStatus.replace('-', ' ')}`,
-    });
-    
-    if (newStatus === 'ready-for-delivery' || newStatus === 'completed') {
-      try {
-        sendEmailNotification(jobToUpdate.customerEmail, jobToUpdate.id, newStatus);
-        toast({
-          title: "Email Notification Sent",
-          description: `Customer has been notified about status change for job ${jobToUpdate.id}`,
-        });
-      } catch (error) {
-        toast({
-          title: "Email Failed",
-          description: "Failed to send email to customer",
-          variant: "destructive"
-        });
-      }
-    }
-    
     setJobToUpdate(null);
+    toast({ title: "Status Updated", description: `Job ${jobToUpdate?.id} status changed to ${newStatus}` });
   };
 
-  const handleViewRepairLog = (jobId: string) => {
-    navigate(`/repair-log?jobId=${jobId}`);
-  };
-
-  const openAssignDialog = (job: typeof initialJobs[0]) => {
+  // Open assign technician dialog
+  const openAssignDialog = (job: Job) => {
     setJobToAssign(job);
-    setSelectedTechnician('');
     setIsAssignDialogOpen(true);
   };
 
-  const handleAssignJob = () => {
-    if (!jobToAssign || !selectedTechnician) return;
-    
-    const updatedJobs = localJobs.map(job => 
-      job.id === jobToAssign.id 
-        ? { ...job, assignedTo: selectedTechnician } 
-        : job
-    );
-    
-    setLocalJobs(updatedJobs);
-    setIsAssignDialogOpen(false);
-    
-    toast({
-      title: "Job Assigned",
-      description: `Job ${jobToAssign.id} has been assigned to ${selectedTechnician}`,
-    });
-    
-    setJobToAssign(null);
-  };
+  // Handle dropdown menu actions
+  const handleMenuAction = useCallback(
+    (action: string, job: Job) => {
+      switch (action) {
+        case 'view-details':
+          handleViewDetails(job);
+          break;
+        case 'update-status':
+          openStatusUpdateDialog(job);
+          break;
+        case 'assign-technician':
+          openAssignDialog(job);
+          break;
+        case 'create-invoice':
+          toast({ title: 'Create Invoice', description: `Creating invoice for job ${job.id}` });
+          navigate(`/invoices?jobId=${job.id}`);
+          break;
+        case 'message-customer':
+          sendEmailNotification(job.customerEmail, job.id, job.status)
+            .then(() =>
+              toast({ title: 'Email Sent', description: `Customer notified for job ${job.id}` })
+            )
+            .catch(() =>
+              toast({ title: 'Email Failed', description: 'Failed to send email.', variant: 'destructive' })
+            );
+          break;
+        case 'delete-job':
+          handleDeleteJob(job.id);
+          break;
+        default:
+          break;
+      }
+    },
+    [navigate, toast]
+  );
 
-  const handleMenuAction = useCallback((action: string, job: typeof initialJobs[0]) => {
-    switch (action) {
-      case 'view-details':
-        handleViewDetails(job);
-        break;
-      case 'update-status':
-        openStatusUpdateDialog(job);
-        break;
-      case 'view-repair-log':
-        handleViewRepairLog(job.id);
-        break;
-      case 'assign-technician':
-        openAssignDialog(job);
-        break;
-      case 'add-parts':
-        toast({
-          title: "Add Parts",
-          description: "Parts inventory system would open here",
-        });
-        break;
-      case 'create-invoice':
-        toast({
-          title: "Create Invoice",
-          description: `Creating invoice for job ${job.id}`,
-        });
-        navigate(`/invoices?jobId=${job.id}`);
-        break;
-      case 'message-customer':
-        sendEmailNotification(job.customerEmail, job.id, job.status)
-          .then(() => {
-            toast({
-              title: "Email Sent",
-              description: `Customer has been notified about job ${job.id}`,
-            });
-          })
-          .catch(() => {
-            toast({
-              title: "Email Failed",
-              description: "Failed to send email to customer",
-              variant: "destructive"
-            });
-          });
-        break;
-      default:
-        break;
-    }
-  }, [handleViewDetails, navigate, toast]);
+  // Safe close for job details dialog
+  const safeCloseJobDetailsDialog = () => {
+    setJobDetailsDialogOpen(false);
+    setJobToView(null);
+  };
 
   return (
     <div className="flex flex-col h-screen">
       {/* Header Section */}
       <div className="flex justify-between items-center p-6 bg-white shadow-sm sticky top-0 z-10">
-      <h1 className="text-2xl font-bold tracking-tight">Repair Jobs</h1>
-      <div className="flex space-x-3">
-          <Button
-            variant="outline"
-            className="relative"
-            onClick={() => setShowNotifications(!showNotifications)}
-          >
+        <h1 className="text-2xl font-bold tracking-tight">Repair Jobs</h1>
+        <div className="flex space-x-3">
+          <Button variant="outline" className="relative" onClick={() => setShowNotifications(!showNotifications)}>
             <Bell className="h-5 w-5" />
-          {notificationJobs.length > 0 && (
-            <span className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-red-500 text-white text-xs flex items-center justify-center">
-              {notificationJobs.length}
-            </span>
-          )}
-        </Button>
-        <Button onClick={handleNewJob} className="bg-repairam hover:bg-repairam-dark">
-          <PlusCircle className="mr-2 h-4 w-4" /> New Job
-        </Button>
-      </div>
-    </div>
-
-    {showNotifications && notificationJobs.length > 0 && (
-      <div className="space-y-3 px-6 py-4 bg-gray-50">
-        {notificationJobs.map((job) => (
-          <Alert key={job.id} className="border-l-4 border-l-repairam">
-            <AlertTitle className="flex justify-between">
-              <span>Status Update: {job.id}</span>
-              <span className="text-xs text-gray-500">Today</span>
-            </AlertTitle>
-            <AlertDescription>
-              <p> {job.assignedTo} has marked this job as{' '}
-                <strong>{job.status.replace('-', ' ')}</strong>
-              </p>
-              <div className="mt-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="mr-2"
-                  onClick={() => handleStatusChange(job.id, 'delivered')}
-                >
-                  Mark as Delivered
-                </Button>
-              </div>
-            </AlertDescription>
-          </Alert>
-        ))}
-        <div className="flex justify-end">
-          <Button variant="ghost" size="sm" onClick={handleClearNotifications}>
-            Clear All
+            {notificationJobs.length > 0 && (
+              <span className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-red-500 text-white text-xs flex items-center justify-center">
+                {notificationJobs.length}
+              </span>
+            )}
+          </Button>
+          <Button onClick={() => setIsNewJobDialogOpen(true)} className="bg-repairam hover:bg-repairam-dark">
+            <PlusCircle className="mr-2 h-4 w-4" /> New Job
           </Button>
         </div>
       </div>
-    )}
-      
- <Card className="sm:max-h-[calc(100vh-20rem)] overflow-y-auto"> 
+
+      {/* Notifications Panel */}
+      {showNotifications && notificationJobs.length > 0 && (
+        <div className="space-y-3 px-6 py-4 bg-gray-50">
+          {notificationJobs.map((job) => (
+            <Alert key={job.id} className="border-l-4 border-l-repairam">
+              <AlertTitle className="flex justify-between">
+                <span>Status Update: {job.id}</span>
+                <span className="text-xs text-gray-500">Today</span>
+              </AlertTitle>
+              <AlertDescription>
+                <p>
+                  {job.assignedTo} has marked this job as{' '}
+                  <strong>{job.status.replace('-', ' ')}</strong>
+                </p>
+                <div className="mt-2">
+                  <Button variant="outline" size="sm" className="mr-2" onClick={() => handleStatusChange(job.id, 'delivered')}>
+                    Mark as Delivered
+                  </Button>
+                </div>
+              </AlertDescription>
+            </Alert>
+          ))}
+          <div className="flex justify-end">
+            <Button variant="ghost" size="sm" onClick={handleClearNotifications}>
+              Clear All
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {/* Job Management Card */}
+      <Card className="sm:max-h-[calc(100vh-20rem)] overflow-y-auto">
         <CardHeader className="pb-3">
           <div className="flex justify-between items-center">
             <CardTitle>Job Management</CardTitle>
@@ -620,7 +655,7 @@ const Jobs = () => {
                 onClick={() => setIsFilterExpanded(!isFilterExpanded)}
                 className="flex items-center gap-1"
               >
-                 <ListFilter className="h-4 w-4" />
+                <ListFilter className="h-4 w-4" />
                 {isFilterExpanded ? 'Hide Filters' : 'Show Filters'}
               </Button>
               <div className="relative">
@@ -634,21 +669,18 @@ const Jobs = () => {
               </div>
             </div>
           </div>
-          
+
+          {/* Filters */}
           {isFilterExpanded && (
-             <div className="mt-4 grid grid-cols-1 md:grid-cols-4 gap-4 bg-gray-50 p-4 rounded-md border">
+            <div className="mt-4 grid grid-cols-1 md:grid-cols-4 gap-4 bg-gray-50 p-4 rounded-md border">
               <div>
                 <Label className="text-xs mb-1 block">Status</Label>
-                <Select 
-                  value={statusFilter}
-                  onValueChange={(value) => setStatusFilter(value)}
-                >
+                <Select value={statusFilter} onValueChange={(value) => setStatusFilter(value)}>
                   <SelectTrigger className="w-full">
                     <SelectValue placeholder="Filter by status" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All Statuses</SelectItem>
-                    <SelectItem value="picked-up">Picked Up</SelectItem>
                     <SelectItem value="received">Received</SelectItem>
                     <SelectItem value="diagnosis">Under Diagnosis</SelectItem>
                     <SelectItem value="repair-in-progress">Repair In Progress</SelectItem>
@@ -656,17 +688,13 @@ const Jobs = () => {
                     <SelectItem value="stress-test">Stress Test</SelectItem>
                     <SelectItem value="ready-for-delivery">Ready for Delivery</SelectItem>
                     <SelectItem value="delivered">Delivered</SelectItem>
-                    <SelectItem value="completed">Completed</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
-              
+
               <div>
                 <Label className="text-xs mb-1 block">Priority</Label>
-                <Select 
-                  value={priorityFilter}
-                  onValueChange={(value) => setPriorityFilter(value)}
-                >
+                <Select value={priorityFilter} onValueChange={(value) => setPriorityFilter(value)}>
                   <SelectTrigger className="w-full">
                     <SelectValue placeholder="Filter by priority" />
                   </SelectTrigger>
@@ -678,25 +706,24 @@ const Jobs = () => {
                   </SelectContent>
                 </Select>
               </div>
-              
+
               <div>
                 <Label className="text-xs mb-1 block">Technician</Label>
-                <Select 
-                  value={technicianFilter}
-                  onValueChange={(value) => setTechnicianFilter(value)}
-                >
+                <Select value={technicianFilter} onValueChange={(value) => setTechnicianFilter(value)}>
                   <SelectTrigger className="w-full">
                     <SelectValue placeholder="Filter by technician" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All Technicians</SelectItem>
-                    {technicians.map(tech => (
-                      <SelectItem key={tech} value={tech}>{tech}</SelectItem>
+                    {technicians.map((tech) => (
+                      <SelectItem key={tech.name} value={tech.name}>
+                        {tech.name}
+                      </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
-              
+
               <div>
                 <Label className="text-xs mb-1 block">Due Date</Label>
                 <Popover>
@@ -708,11 +735,7 @@ const Jobs = () => {
                         !dateFilter && "text-muted-foreground"
                       )}
                     >
-                      {dateFilter ? (
-                        format(dateFilter, "PPP")
-                      ) : (
-                        <span>Select due date</span>
-                      )}
+                      {dateFilter ? format(dateFilter, "PPP") : <span>Select due date</span>}
                       <CalendarDays className="ml-auto h-4 w-4 opacity-50" />
                     </Button>
                   </PopoverTrigger>
@@ -722,15 +745,10 @@ const Jobs = () => {
                       selected={dateFilter}
                       onSelect={setDateFilter}
                       initialFocus
-                      className="p-3 pointer-events-auto"
                     />
                     {dateFilter && (
                       <div className="p-3 border-t border-border flex justify-end">
-                        <Button 
-                          variant="ghost" 
-                          size="sm" 
-                          onClick={() => setDateFilter(undefined)}
-                        >
+                        <Button variant="ghost" size="sm" onClick={() => setDateFilter(undefined)}>
                           Clear
                         </Button>
                       </div>
@@ -738,7 +756,7 @@ const Jobs = () => {
                   </PopoverContent>
                 </Popover>
               </div>
-              
+
               <div className="md:col-span-4 flex justify-end mt-2">
                 <Button variant="outline" size="sm" onClick={clearFilters}>
                   Clear All Filters
@@ -747,6 +765,7 @@ const Jobs = () => {
             </div>
           )}
         </CardHeader>
+
         <CardContent>
           <div className="rounded-md border">
             <div className="overflow-x-auto">
@@ -765,34 +784,22 @@ const Jobs = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredJobs.map((job) => (
-                    <tr key={job.id} className={`bg-white border-b hover:bg-gray-50 ${activeJob === job.id ? 'bg-gray-50' : ''}`}>
-                      <td className="px-6 py-4 font-medium">
-                        {job.id}
-                        {job.hasNotification && (
-                          <span className="ml-2 h-2 w-2 rounded-full bg-red-500 inline-block"></span>
-                        )}
-                      </td>
+                  {currentJobs.map((job) => (
+                    <tr key={job.id} className="border-b hover:bg-gray-50">
+                      <td className="px-6 py-4 font-mono text-xs">{job.id}</td>
                       <td className="px-6 py-4">{job.customer}</td>
                       <td className="px-6 py-4">
-                        <div>{job.device}</div>
-                        <div className="text-gray-500">{job.issue}</div>
+                        <div className="font-medium">{job.device}</div>
+                        <div className="text-xs text-gray-500 truncate max-w-xs">{job.issue}</div>
                       </td>
-                      <td className="px-6 py-4 font-mono text-xs">
-                        {job.serialNumber || 'N/A'}
-                      </td>
-                      <td className="px-6 py-4">
-                        {getStatusBadge(job.status)}
-                      </td>
-                      <td className="px-6 py-4">
-                        {getPriorityBadge(job.priority)}
-                      </td>
-                      <td className="px-6 py-4">{job.dueDate}</td>
+                      <td className="px-6 py-4 font-mono text-xs">{job.serialNumber || 'N/A'}</td>
+                      <td className="px-6 py-4">{getStatusBadge(job.status)}</td>
+                      <td className="px-6 py-4">{getPriorityBadge(job.priority)}</td>
+                      <td className="px-6 py-4">{format(new Date(job.dueDate), 'PPP')}</td>
                       <td className="px-6 py-4">{job.assignedTo}</td>
                       <td className="px-6 py-4 text-right">
                         <div className="flex items-center justify-end">
                           <JobPrintables job={job} />
-                          
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                               <Button variant="ghost" size="icon" className="h-8 w-8">
@@ -800,27 +807,15 @@ const Jobs = () => {
                               </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
-                              <DropdownMenuItem onClick={() => handleMenuAction('view-details', job)}>
-                                View Details
-                              </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => handleMenuAction('update-status', job)}>
-                                Update Status
-                              </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => handleMenuAction('view-repair-log', job)}>
-                                View Repair Log
-                              </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => handleMenuAction('assign-technician', job)}>
-                                Assign Technician
-                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => handleMenuAction('view-details', job)}>View Details</DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => handleMenuAction('update-status', job)}>Update Status</DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => handleMenuAction('assign-technician', job)}>Assign Technician</DropdownMenuItem>
                               <DropdownMenuSeparator />
-                              <DropdownMenuItem onClick={() => handleMenuAction('add-parts', job)}>
-                                Add Parts
-                              </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => handleMenuAction('create-invoice', job)}>
-                                Create Invoice
-                              </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => handleMenuAction('message-customer', job)}>
-                                Message Customer
+                              <DropdownMenuItem
+                                className="text-red-600 focus:text-red-600"
+                                onClick={() => handleMenuAction('delete-job', job)}
+                              >
+                                <Trash2 className="mr-2 h-4 w-4" /> Delete Job
                               </DropdownMenuItem>
                             </DropdownMenuContent>
                           </DropdownMenu>
@@ -831,42 +826,40 @@ const Jobs = () => {
                 </tbody>
               </table>
             </div>
-            
-            {filteredJobs.length === 0 && (
-              <div className="py-10 text-center text-gray-500">
-                <p>No jobs found matching your search criteria.</p>
-              </div>
-            )}
+          </div>
+
+          {/* Pagination Controls */}
+          <div className="mt-4 flex justify-center items-center space-x-2">
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={currentPage === 1}
+              onClick={() => paginate(currentPage - 1)}
+            >
+              Previous
+            </Button>
+            <span className="text-sm">
+              Page {currentPage} of {totalPages}
+            </span>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={currentPage === totalPages}
+              onClick={() => paginate(currentPage + 1)}
+            >
+              Next
+            </Button>
           </div>
         </CardContent>
       </Card>
 
-      <Dialog open={isNewJobDialogOpen} onOpenChange={(open) => {
-        if (!open) {
-          setTimeout(() => {
-            setIsNewJobDialogOpen(false);
-            setNewJob({
-              customer: '',
-              device: '',
-              issue: '',
-              serialNumber: '',
-              customerEmail: '',
-              phoneNumber: '',
-              address: '',
-              priority: 'medium',
-              dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
-            });
-          }, 10);
-        }
-      }}>
-        <DialogContent className="sm:max-w-[525px]">
+      {/* New Job Dialog */}
+      <Dialog open={isNewJobDialogOpen} onOpenChange={setIsNewJobDialogOpen}>
+        <DialogContent className="sm:max-w-[600px]">
           <DialogHeader>
             <DialogTitle>Create New Repair Job</DialogTitle>
-            <DialogDescription>
-              Enter the details for the new repair job.
-            </DialogDescription>
+            <DialogDescription>Enter the details for the new repair job below.</DialogDescription>
           </DialogHeader>
-          
           <div className="grid gap-4 py-4">
             <div className="grid gap-2">
               <Label htmlFor="customer">Customer Name</Label>
@@ -878,18 +871,16 @@ const Jobs = () => {
                 onChange={(e) => setNewJob({ ...newJob, customer: e.target.value })}
               />
             </div>
-            
             <div className="grid gap-2">
               <Label htmlFor="device">Device Type</Label>
               <Input
                 id="device"
                 name="device"
-                placeholder="iPhone 13, MacBook Pro, etc."
+                placeholder="Phone, laptop, etc."
                 value={newJob.device}
                 onChange={(e) => setNewJob({ ...newJob, device: e.target.value })}
               />
             </div>
-            
             <div className="grid gap-2">
               <Label htmlFor="issue">Issue Description</Label>
               <Textarea
@@ -901,7 +892,6 @@ const Jobs = () => {
                 rows={3}
               />
             </div>
-            
             <div className="grid gap-2">
               <Label htmlFor="serialNumber">Serial Number (Optional)</Label>
               <Input
@@ -912,32 +902,28 @@ const Jobs = () => {
                 onChange={(e) => setNewJob({ ...newJob, serialNumber: e.target.value })}
               />
             </div>
-            
             <div className="grid gap-2">
               <Label htmlFor="customerEmail">Customer Email</Label>
               <Input
                 id="customerEmail"
                 name="customerEmail"
-                type="email"
                 placeholder="customer@example.com"
                 value={newJob.customerEmail}
                 onChange={(e) => setNewJob({ ...newJob, customerEmail: e.target.value })}
               />
             </div>
-            
             <div className="grid gap-2">
               <Label htmlFor="phoneNumber">Phone Number</Label>
               <Input
                 id="phoneNumber"
                 name="phoneNumber"
-                placeholder="555-123-4567"
+                placeholder="+1 (555) 123-4567"
                 value={newJob.phoneNumber}
                 onChange={(e) => setNewJob({ ...newJob, phoneNumber: e.target.value })}
               />
             </div>
-            
             <div className="grid gap-2">
-              <Label htmlFor="address">Address (Optional)</Label>
+              <Label htmlFor="address">Address</Label>
               <Input
                 id="address"
                 name="address"
@@ -946,13 +932,9 @@ const Jobs = () => {
                 onChange={(e) => setNewJob({ ...newJob, address: e.target.value })}
               />
             </div>
-            
             <div className="grid gap-2">
-              <Label htmlFor="priority">Priority</Label>
-              <Select 
-                value={newJob.priority} 
-                onValueChange={(value) => setNewJob({ ...newJob, priority: value })}
-              >
+              <Label htmlFor="priority">Priority Level</Label>
+              <Select value={newJob.priority} onValueChange={(value) => setNewJob({ ...newJob, priority: value })}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select priority" />
                 </SelectTrigger>
@@ -963,38 +945,34 @@ const Jobs = () => {
                 </SelectContent>
               </Select>
             </div>
-            
             <div className="grid gap-2">
-              <Label>Due Date</Label>
+              <Label htmlFor="dueDate">Due Date</Label>
               <Popover>
                 <PopoverTrigger asChild>
                   <Button
                     variant={"outline"}
                     className={cn(
-                      "w-full justify-start text-left font-normal",
+                      "justify-start text-left font-normal",
                       !newJob.dueDate && "text-muted-foreground"
                     )}
                   >
-                    {newJob.dueDate ? (
-                      format(newJob.dueDate, "PPP")
-                    ) : (
-                      <span>Pick a date</span>
-                    )}
-                    <CalendarDays className="ml-auto h-4 w-4 opacity-50" />
+                    <CalendarDays className="mr-2 h-4 w-4" />
+                    {newJob.dueDate ? format(new Date(newJob.dueDate), "PPP") : <span>Pick a date</span>}
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-auto p-0" align="start">
                   <CalendarComponent
                     mode="single"
-                    selected={newJob.dueDate}
-                    onSelect={(date) => date && setNewJob({ ...newJob, dueDate: date })}
+                    selected={newJob.dueDate ? new Date(newJob.dueDate) : undefined}
+                    onSelect={(date) =>
+                      setNewJob({ ...newJob, dueDate: date?.toISOString().split("T")[0] || "" })
+                    }
                     initialFocus
                   />
                 </PopoverContent>
               </Popover>
             </div>
           </div>
-          
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsNewJobDialogOpen(false)}>
               Cancel
@@ -1006,15 +984,13 @@ const Jobs = () => {
         </DialogContent>
       </Dialog>
 
+      {/* Status Update Dialog */}
       <Dialog open={statusUpdateDialogOpen} onOpenChange={setStatusUpdateDialogOpen}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Update Job Status</DialogTitle>
-            <DialogDescription>
-              Change the current status of this repair job.
-            </DialogDescription>
+            <DialogDescription>Change the current status of this repair job.</DialogDescription>
           </DialogHeader>
-          
           {jobToUpdate && (
             <div className="grid gap-4 py-4">
               <div className="grid gap-2">
@@ -1023,7 +999,6 @@ const Jobs = () => {
                   {jobToUpdate.status.replace('-', ' ')}
                 </Badge>
               </div>
-              
               <div className="grid gap-2">
                 <Label htmlFor="new-status">New Status</Label>
                 <Select value={newStatus} onValueChange={setNewStatus}>
@@ -1038,48 +1013,29 @@ const Jobs = () => {
                     <SelectItem value="stress-test">Stress Test</SelectItem>
                     <SelectItem value="ready-for-delivery">Ready for Delivery</SelectItem>
                     <SelectItem value="delivered">Delivered</SelectItem>
-                    <SelectItem value="completed">Completed</SelectItem>
-                    <SelectItem value="picked-up">Picked Up</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
-              
-              <div className="grid gap-2">
-                <Label htmlFor="notes">Add Notes (Optional)</Label>
-                <Textarea 
-                  id="notes" 
-                  placeholder="Any additional information about this status change..."
-                  value={statusUpdateNote}
-                  onChange={(e) => setStatusUpdateNote(e.target.value)}
-                  rows={3}
-                />
-              </div>
             </div>
           )}
-          
           <DialogFooter>
             <Button variant="outline" onClick={() => setStatusUpdateDialogOpen(false)}>
               Cancel
             </Button>
-            <Button 
-              onClick={handleStatusUpdateSubmit}
-              disabled={!newStatus || (jobToUpdate && newStatus === jobToUpdate.status)}
-            >
+            <Button className="bg-repairam hover:bg-repairam-dark" onClick={handleStatusUpdateSubmit}>
               Update Status
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
+      {/* Assign Technician Dialog */}
       <Dialog open={isAssignDialogOpen} onOpenChange={setIsAssignDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Assign Job to Technician</DialogTitle>
-            <DialogDescription>
-              Select which technician should handle this repair job.
-            </DialogDescription>
+            <DialogTitle>Assign Technician</DialogTitle>
+            <DialogDescription>Select which technician should handle this repair job.</DialogDescription>
           </DialogHeader>
-          
           {jobToAssign && (
             <div className="grid gap-4 py-4">
               <div className="grid gap-2">
@@ -1091,7 +1047,6 @@ const Jobs = () => {
                   <p><strong>Current Technician:</strong> {jobToAssign.assignedTo}</p>
                 </div>
               </div>
-              
               <div className="grid gap-2">
                 <Label htmlFor="technician">Assign to Technician</Label>
                 <Select value={selectedTechnician} onValueChange={setSelectedTechnician}>
@@ -1099,24 +1054,22 @@ const Jobs = () => {
                     <SelectValue placeholder="Select technician" />
                   </SelectTrigger>
                   <SelectContent>
-                    {technicians.map(tech => (
-                      <SelectItem key={tech} value={tech}>{tech}</SelectItem>
+                    {technicians.map((tech) => (
+                      <SelectItem key={tech.name} value={tech.name}>
+                        {tech.name}
+                      </SelectItem>
                     ))}
-                    <SelectItem value="Unassigned">Unassigned</SelectItem>
-                    <SelectItem value="Mike Technician">Mike Technician</SelectItem>
-                    <SelectItem value="Lisa Technician">Lisa Technician</SelectItem>
-                    <SelectItem value="John Technician">John Technician</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
             </div>
           )}
-          
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsAssignDialogOpen(false)}>
               Cancel
             </Button>
-            <Button 
+            <Button
+              className="bg-repairam hover:bg-repairam-dark"
               onClick={handleAssignJob}
               disabled={!selectedTechnician || (jobToAssign && selectedTechnician === jobToAssign.assignedTo)}
             >
@@ -1126,111 +1079,101 @@ const Jobs = () => {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={jobDetailsDialogOpen} onOpenChange={(open) => {
-        if (!open) safeCloseJobDetailsDialog();
-      }}>
-        <DialogContent className="sm:max-w-[700px]">
-          <DialogHeader>
-            <DialogTitle>Job Details</DialogTitle>
-          </DialogHeader>
-          
-          {jobToView && (
-            <div className="space-y-6">
-              <div className="flex justify-between items-start">
-                <div>
-                  <h3 className="text-lg font-semibold">{jobToView.device}</h3>
-                  <p className="text-gray-500">{jobToView.issue}</p>
-                </div>
-                <div>
-                  {getStatusBadge(jobToView.status)}
-                </div>
+    {/* Job Details Dialog */}
+<Dialog open={jobDetailsDialogOpen} onOpenChange={safeCloseJobDetailsDialog}>
+  <DialogContent className="sm:max-w-[700px] max-h-screen overflow-y-auto">
+    <DialogHeader>
+      <DialogTitle>Job Details</DialogTitle>
+    </DialogHeader>
+    {jobToView && (
+      <div className="space-y-6 p-1">
+        <div className="flex justify-between items-start">
+          <div>
+            <h3 className="text-lg font-semibold">{jobToView.device}</h3>
+            <p className="text-gray-500 text-sm">{jobToView.issue}</p>
+          </div>
+          <div>{getStatusBadge(jobToView.status)}</div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* Customer Information */}
+          <div className="space-y-4">
+            <h4 className="text-sm font-medium text-gray-500">Customer Info:</h4>
+            <div className="mt-1 space-y-1">
+              <p className="font-medium">{jobToView.customer}</p>
+              {jobToView.customerEmail && (
+                <p className="text-sm text-blue-600">{jobToView.customerEmail}</p>
+              )}
+              {jobToView.phoneNumber && (
+                <p className="text-sm">{jobToView.phoneNumber}</p>
+              )}
+            </div>
+          </div>
+
+          {/* Serial Number */}
+          <div className="space-y-4">
+            <h4 className="text-sm font-medium text-gray-500">Device Serial Number:</h4>
+            <p className="mt-1 font-mono text-sm">{jobToView.serialNumber || 'N/A'}</p>
+          </div>
+
+          {/* Assignment */}
+          <div className="space-y-4">
+            <h4 className="text-sm font-medium text-gray-500">Technician:</h4>
+            <p className="mt-1">{jobToView.assignedTo}</p>
+          </div>
+
+          {/* Dates */}
+          <div className="space-y-4">
+            <h4 className="text-sm font-medium text-gray-500">Dates:</h4>
+            <div className="mt-1 grid grid-cols-2 gap-2">
+              <div>
+                <p className="text-xs text-gray-500">Created:</p>
+                <p className="text-sm">{format(new Date(jobToView.createdAt), 'PPP')}</p>
               </div>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-4">
-                  <div>
-                    <h4 className="text-sm font-medium text-gray-500">Customer Information</h4>
-                    <div className="mt-1">
-                      <p className="font-medium">{jobToView.customer}</p>
-                      <p className="text-sm">{jobToView.customerEmail}</p>
-                      <p className="text-sm">{jobToView.phoneNumber || 'No phone number'}</p>
-                    </div>
-                  </div>
-                  
-                  <div>
-                    <h4 className="text-sm font-medium text-gray-500">Serial Number</h4>
-                    <p className="mt-1 font-mono text-sm">{jobToView.serialNumber || 'N/A'}</p>
-                  </div>
-                </div>
-                
-                <div className="space-y-4">
-                  <div>
-                    <h4 className="text-sm font-medium text-gray-500">Assignment</h4>
-                    <p className="mt-1">{jobToView.assignedTo}</p>
-                  </div>
-                  
-                  <div>
-                    <h4 className="text-sm font-medium text-gray-500">Dates</h4>
-                    <div className="mt-1 grid grid-cols-2 gap-2">
-                      <div>
-                        <p className="text-xs text-gray-500">Created</p>
-                        <p className="text-sm">{jobToView.createdAt}</p>
-                      </div>
-                      <div>
-                        <p className="text-xs text-gray-500">Due Date</p>
-                        <p className="text-sm">{jobToView.dueDate}</p>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <div>
-                    <h4 className="text-sm font-medium text-gray-500">Priority</h4>
-                    <div className="mt-1">
-                      {getPriorityBadge(jobToView.priority)}
-                    </div>
-                  </div>
-                </div>
-              </div>
-              
-              <div className="space-y-2">
-                <h4 className="text-sm font-medium text-gray-500">Actions</h4>
-                <div className="flex flex-wrap gap-2">
-                  <Button 
-                    variant="outline" 
-                    size="sm"
-                    onClick={() => {
-                      safeCloseJobDetailsDialog();
-                      openStatusUpdateDialog(jobToView);
-                    }}
-                  >
-                    Update Status
-                  </Button>
-                  <Button 
-                    variant="outline" 
-                    size="sm"
-                    onClick={() => {
-                      safeCloseJobDetailsDialog();
-                      openAssignDialog(jobToView);
-                    }}
-                  >
-                    Assign Technician
-                  </Button>
-                  <Button 
-                    variant="outline" 
-                    size="sm"
-                    onClick={() => {
-                      safeCloseJobDetailsDialog();
-                      navigate(`/repair-log?jobId=${jobToView.id}`);
-                    }}
-                  >
-                    View Repair Log
-                  </Button>
-                </div>
+              <div>
+                <p className="text-xs text-gray-500">Due Date:</p>
+                <p className="text-sm">{format(new Date(jobToView.dueDate), 'PPP')}</p>
               </div>
             </div>
-          )}
-        </DialogContent>
-      </Dialog>
+          </div>
+
+          {/* Priority */}
+          <div className="space-y-4">
+            <h4 className="text-sm font-medium text-gray-500">Priority:</h4>
+            <div className="mt-1">{getPriorityBadge(jobToView.priority)}</div>
+          </div>
+        </div>
+
+        {/* Actions */}
+        <div className="space-y-2 pt-2">
+          <h4 className="text-sm font-medium text-gray-500">Actions:</h4>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                safeCloseJobDetailsDialog();
+                openStatusUpdateDialog(jobToView);
+              }}
+            >
+              Update Job Status
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                safeCloseJobDetailsDialog();
+                openAssignDialog(jobToView);
+              }}
+            >
+              Assign To A Technician
+            </Button>
+          </div>
+        </div>
+      </div>
+    )}
+  </DialogContent>
+</Dialog>
     </div>
   );
 };
