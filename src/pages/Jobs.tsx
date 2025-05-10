@@ -334,7 +334,6 @@ const Jobs = () => {
     }
   };
 
-  // ✅ Assign Job Function (Updated to communicate with backend)
   const handleAssignJob = async () => {
     if (!jobToAssign || !selectedTechnician) return;
 
