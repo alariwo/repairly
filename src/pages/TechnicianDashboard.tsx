@@ -1,390 +1,519 @@
 import React, { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { useNavigate } from 'react-router-dom';
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableRow,
+  TableHeader,
+} from '@/components/ui/table';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+  DialogDescription,
+} from '@/components/ui/dialog';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
-import { JobList } from '@/components/technician/JobList';
-import { JobDetailsEditor } from '@/components/technician/JobDetailsEditor';
-import { JobReassignmentDialog } from '@/components/technician/JobReassignmentDialog';
-import { ExternalTechnicianWorkForm } from '@/components/technician/ExternalTechnicianWorkForm';
-import { sendEmailWithAttachments } from '@/utils/notifications';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { UserRound, ExternalLink } from 'lucide-react';
+import html2pdf from 'html2pdf.js';
+import {
+  Clock,
+  CheckCircle,
+  Users,
+  Calendar,
+  FileText,
+  Package,
+  Bell,
+  Search,
+  MoreHorizontal,
+  RotateCw,
+  Download,
+  Printer,
+} from 'lucide-react';
 
-const currentTechnician = {
-  id: 'tech-001',
-  name: 'Mike Technician',
-  isExternal: false
-};
-
-const technicianJobs = [
-  {
-    id: 'JOB-1001',
-    deviceType: 'iPhone 12',
-    issue: 'Cracked Screen',
-    status: 'diagnosis',
-    notes: '',
-    beforeImages: [],
-    afterImages: [],
-    createdAt: '2025-04-10',
-    dueDate: '2025-04-15',
-    serialNumber: 'SN12345678',
-    customer: 'John Smith',
-    phoneNumber: '555-123-4567',
-    customerEmail: 'john.smith@example.com'
-  },
-  {
-    id: 'JOB-1003',
-    deviceType: 'Samsung Galaxy S21',
-    issue: 'Charging Port',
-    status: 'repair-in-progress',
-    notes: 'Ordered replacement part',
-    beforeImages: ['damaged-port.jpg'],
-    afterImages: [],
-    createdAt: '2025-04-08',
-    dueDate: '2025-04-18',
-    serialNumber: 'RZ8G61LCX2P',
-    customer: 'Michael Brown',
-    phoneNumber: '555-345-6789',
-    customerEmail: 'michael.b@example.com'
-  },
-  {
-    id: 'JOB-1005',
-    deviceType: 'iPad Pro',
-    issue: 'Broken Home Button',
-    status: 'repair-completed',
-    notes: 'Disassembled device, waiting for parts',
-    beforeImages: ['broken-button.jpg'],
-    afterImages: [],
-    createdAt: '2025-04-06',
-    dueDate: '2025-04-13',
-    serialNumber: 'DMPWH8MYHJKT',
-    customer: 'David Wilson',
-    phoneNumber: '555-567-8901',
-    customerEmail: 'david.w@example.com'
-  },
-];
-
-const externalTechAssignments = [
-  {
-    id: 'JOB-1008',
-    deviceType: 'MacBook Pro 2021',
-    issue: 'Logic Board Replacement',
-    status: 'assigned-to-external',
-    notes: 'Need specialized repair. Assigned to external technician.',
-    beforeImages: [],
-    afterImages: [],
-    createdAt: '2025-04-12',
-    dueDate: '2025-04-22',
-    serialNumber: 'C02G26ZFMD6M',
-    customer: 'Edward Thompson',
-    phoneNumber: '555-999-8888',
-    customerEmail: 'edward.t@example.com',
-    externalTechnicianId: 'tech-005',
-    externalTechnicianName: 'Express Repair'
-  }
-];
-
-const otherTechnicians = [
-  { id: 'tech-002', name: 'Lisa Technician' },
-  { id: 'tech-003', name: 'John Technician' },
-  { id: 'tech-004', name: 'Sarah Technician' },
-  { id: 'tech-005', name: 'Express Repair', isExternal: true },
-];
+// Types
+interface Job {
+  _id?: string;
+  id: string;
+  deviceType: string;
+  issue: string;
+  serialNumber: string;
+  status: string;
+  dueDate: string;
+  assignedTo: string;
+  customerEmail: string;
+  technicianNotes?: string;
+}
 
 const TechnicianDashboard = () => {
-  const { toast } = useToast();
-  const [jobs, setJobs] = useState(technicianJobs);
-  const [externalJobs, setExternalJobs] = useState(externalTechAssignments);
-  const [selectedJob, setSelectedJob] = useState<null | typeof technicianJobs[0]>(null);
+  const [jobs, setJobs] = useState<Job[]>([]);
+  const [currentTechnician, setCurrentTechnician] = useState<{ name: string; role: string } | null>(null);
+  const [selectedJob, setSelectedJob] = useState<Job | null>(null);
+  const [isStatusDialogOpen, setIsStatusDialogOpen] = useState(false);
+  const [newStatus, setNewStatus] = useState('');
+  const [statusNote, setStatusNote] = useState('');
   const [isReassignDialogOpen, setIsReassignDialogOpen] = useState(false);
-  const [statusUpdateHistory, setStatusUpdateHistory] = useState<Record<string, string[]>>({});
-  const [activeTab, setActiveTab] = useState('internal');
-  const [showExternalForm, setShowExternalForm] = useState(false);
-  const [selectedExternalJob, setSelectedExternalJob] = useState<null | typeof externalTechAssignments[0]>(null);
+  const [reassignTechnician, setReassignTechnician] = useState('');
+  const [technicians, setTechnicians] = useState<{ name: string }[]>([]);
+  const [searchTerm, setSearchTerm] = useState('');
+  const { toast } = useToast();
+  const navigate = useNavigate();
 
-  const isExternalTechnician = currentTechnician.isExternal;
+  // Helper function to get auth token
+  const getAuthToken = () => localStorage.getItem('authToken');
 
-  useEffect(() => {
-    console.log('Jobs updated:', jobs);
-  }, [jobs]);
+  // Get logged-in technician info
+  const getLoggedInTechnicianName = () => {
+    const userString = localStorage.getItem('user');
+    if (!userString) return null;
 
-  useEffect(() => {
-    if (isExternalTechnician) {
-      setActiveTab('external');
-    }
-  }, [isExternalTechnician]);
-
-  const handleSelectJob = (job: typeof technicianJobs[0]) => {
-    setSelectedJob(job);
-    setSelectedExternalJob(null);
-    setShowExternalForm(false);
-    
-    toast({
-      title: "Job Selected",
-      description: `You are now editing job ${job.id}`,
-    });
-  };
-
-  const handleSelectExternalJob = (job: typeof externalTechAssignments[0]) => {
-    setSelectedExternalJob(job);
-    setSelectedJob(null);
-    setShowExternalForm(true);
-    
-    toast({
-      title: "External Job Selected",
-      description: `You are now viewing external job ${job.id}`,
-    });
-  };
-
-  const handleJobUpdate = (updatedJobData: Partial<typeof technicianJobs[0]>) => {
-    if (!selectedJob) return;
-    
-    const updatedJobs = jobs.map(job => 
-      job.id === selectedJob.id 
-        ? { ...job, ...updatedJobData } 
-        : job
-    );
-    
-    setJobs(updatedJobs);
-    
-    const updatedJob = updatedJobs.find(job => job.id === selectedJob.id);
-    if (updatedJob) {
-      setSelectedJob(updatedJob);
-    }
-    
-    const newStatus = updatedJobData.status;
-    if (newStatus && newStatus !== selectedJob.status) {
-      setStatusUpdateHistory(prev => ({
-        ...prev,
-        [selectedJob.id]: [
-          ...(prev[selectedJob.id] || []),
-          `Status changed from ${selectedJob.status} to ${newStatus} on ${new Date().toLocaleString()}`
-        ]
-      }));
-
-      if (newStatus === 'repair-completed' || newStatus === 'ready-for-delivery') {
-        toast({
-          title: "Admin Notification Sent",
-          description: `Admin has been notified about the status change for job ${selectedJob.id}.`,
-        });
-      }
-    }
-    
-    toast({
-      title: "Job Updated",
-      description: `Job ${selectedJob.id} has been updated successfully.`,
-    });
-  };
-
-  const handleNotifyCustomer = async (job: typeof technicianJobs[0], notes: string) => {
-    if (!job.customerEmail) return;
-    
-    const statusName = job.status.replace(/-/g, ' ');
-    const emailContent = `
-      Dear ${job.customer},
-      
-      This is an update regarding your repair job (${job.id}).
-      
-      Current Status: ${statusName}
-      
-      Additional Notes:
-      ${notes || 'No additional notes provided.'}
-      
-      If you have any questions, please contact us.
-      
-      Thank you for choosing our service.
-    `;
-    
-    const attachments = [];
-    if (job.afterImages.length > 0) {
-      attachments.push({
-        name: 'repair-photos.jpg',
-        type: 'image/jpeg'
-      });
-    }
-    
     try {
-      await sendEmailWithAttachments(
-        job.customerEmail,
-        `Update on Your Repair Job ${job.id}`,
-        emailContent,
-        attachments
-      );
-      
-      setStatusUpdateHistory(prev => ({
-        ...prev,
-        [job.id]: [
-          ...(prev[job.id] || []),
-          `Customer notified about status "${statusName}" on ${new Date().toLocaleString()}`
-        ]
-      }));
-      
-      toast({
-        title: "Customer Notified",
-        description: "An email has been sent to the customer with the status update.",
-      });
-      
+      const user = JSON.parse(userString);
+      return {
+        name: user.name || user.email,
+        role: user.role,
+      };
     } catch (error) {
-      console.error('Failed to send email with attachments:', error);
+      console.error('Failed to parse user:', error);
+      return null;
+    }
+  };
+
+  // Fetch technician jobs
+  const fetchTechnicianJobs = async () => {
+    try {
+      const authToken = getAuthToken();
+      if (!authToken) throw new Error('Authentication token is missing');
+
+      const technician = getLoggedInTechnicianName();
+      if (!technician) throw new Error('Could not identify technician');
+
+      const response = await fetch(`https://repairly-backend.onrender.com/api/technicians/${encodeURIComponent(technician.name!)}`, {
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${authToken}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        let errorMessage = 'Failed to load technician jobs.';
+        try {
+          const errorJson = JSON.parse(errorText);
+          errorMessage += ` Server said: ${errorJson.message || errorJson.error}`;
+        } catch {
+          errorMessage += ` Raw response: ${errorText}`;
+        }
+        throw new Error(errorMessage);
+      }
+
+      const data = await response.json();
+
+      // Map API response to expected format
+      const formattedJobs = data.map((job) => ({
+        ...job,
+        id: job.jobId,
+        deviceType: job.deviceType || 'Unknown Device',
+        issue: job.issueDescription || 'No description provided',
+        serialNumber: job.serialNumber || 'N/A',
+        status: job.status || 'unknown',
+        dueDate: job.dueDate ? new Date(job.dueDate).toLocaleDateString() : 'N/A',
+        assignedTo: technician.name,
+        customerEmail: job.customerEmail || 'N/A',
+      }));
+
+      setJobs(formattedJobs);
+      setCurrentTechnician(technician);
+    } catch (error) {
+      console.error(error);
       toast({
-        title: "Notification Failed",
-        description: "Failed to send email notification to customer.",
-        variant: "destructive"
+        title: 'Error',
+        description: error.message || 'Failed to load technician jobs.',
+        variant: 'destructive',
       });
     }
   };
 
-  const handleJobReassign = (reassignmentData: any) => {
-    if (!selectedJob) return;
-    
-    toast({
-      title: "Job Reassigned",
-      description: reassignmentData.technicianRole === 'internal' 
-        ? `Job ${selectedJob.id} has been reassigned to ${reassignmentData.technician}.`
-        : `Job ${selectedJob.id} has been sent to external provider with notes.`,
-    });
-    
-    const updatedJobs = jobs.filter(job => job.id !== selectedJob.id);
-    setJobs(updatedJobs);
-    setSelectedJob(null);
-    setIsReassignDialogOpen(false);
+  // Fetch list of technicians for reassign modal
+  const fetchTechniciansList = async () => {
+    try {
+      const authToken = getAuthToken();
+      if (!authToken) throw new Error('Authentication token is missing');
+
+      const res = await fetch('https://repairly-backend.onrender.com/api/user ', {
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${authToken}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!res.ok) throw new Error('Failed to fetch technicians');
+
+      const result = await res.json();
+
+      const techList = result.users
+        .filter((user) => user.role === 'technician' || user.role === 'admin')
+        .map((user) => ({ name: user.name }));
+
+      setTechnicians(techList);
+    } catch (error) {
+      console.error(error);
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to fetch technician list.',
+        variant: 'destructive',
+      });
+    }
   };
 
-  const handleExternalWorkSubmit = (notes: string, totalCost: number, lineItems: any[]) => {
-    if (!selectedExternalJob) return;
-    
-    const updatedExternalJobs = externalJobs.map(job => 
-      job.id === selectedExternalJob.id 
-        ? { 
-            ...job, 
-            notes: job.notes + '\n\n' + notes,
-            status: 'external-work-completed',
-            billingAmount: totalCost,
-            billingLineItems: lineItems
-          } 
-        : job
-    );
-    
-    setExternalJobs(updatedExternalJobs);
-    setSelectedExternalJob(null);
-    setShowExternalForm(false);
-    
-    toast({
-      title: "Work Report Submitted",
-      description: `Your report for job ${selectedExternalJob.id} has been submitted successfully.`,
-    });
+  // Handle update job status
+  const handleUpdateJobStatus = async () => {
+    if (!selectedJob || !newStatus) return;
+
+    try {
+      const authToken = getAuthToken();
+      if (!authToken) throw new Error('Authentication token is missing');
+
+      const jobId = selectedJob._id || selectedJob.id;
+
+      const response = await fetch(`https://repairly-backend.onrender.com/api/jobs/jobs/${jobId}/status`, {
+        method: 'PUT',
+        headers: {
+          Authorization: `Bearer ${authToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ status: newStatus, note: statusNote }),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        let errorMessage = 'Failed to update job status.';
+        try {
+          const errorJson = JSON.parse(errorText);
+          errorMessage += ` Server said: ${errorJson.message || errorJson.error}`;
+        } catch {
+          errorMessage += ` Raw response: ${errorText}`;
+        }
+        throw new Error(errorMessage);
+      }
+
+      const updatedJob = await response.json();
+
+      setJobs(jobs.map(job => (job.id === jobId ? updatedJob : job)));
+      setIsStatusDialogOpen(false);
+      toast({ title: 'Status Updated', description: `Job #${jobId} status changed to "${newStatus}"` });
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to update job status.',
+        variant: 'destructive',
+      });
+    }
   };
+
+  // Handle reassign job
+  const handleReassignJob = async () => {
+    if (!selectedJob || !reassignTechnician) return;
+
+    try {
+      const authToken = getAuthToken();
+      if (!authToken) throw new Error('Authentication token is missing');
+
+      const jobId = selectedJob._id || selectedJob.id;
+
+      const response = await fetch(`https://repairly-backend.onrender.com/api/jobs/jobs/${jobId}/reassign`, {
+        method: 'PUT',
+        headers: {
+          Authorization: `Bearer ${authToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          newTechnician: reassignTechnician,
+          note: 'Job reassigned via dashboard',
+        }),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        let errorMessage = 'Failed to reassign job.';
+        try {
+          const errorJson = JSON.parse(errorText);
+          errorMessage += ` Server said: ${errorJson.message || errorJson.error}`;
+        } catch {
+          errorMessage += ` Raw response: ${errorText}`;
+        }
+        throw new Error(errorMessage);
+      }
+
+      const updatedJob = await response.json();
+      setJobs(jobs.map(job => (job.id === jobId ? updatedJob : job)));
+      setIsReassignDialogOpen(false);
+      toast({ title: 'Job Reassigned', description: `Job #${jobId} reassigned to "${reassignTechnician}"` });
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to reassign job.',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  // Generate printable job card
+  const generatePrintableJobCard = (job: Job) => {
+    const wrapper = document.createElement("div");
+    wrapper.style.padding = "20px";
+    wrapper.style.backgroundColor = "#ffffff";
+    wrapper.innerHTML = `
+      <h2>Repair Job Card</h2>
+      <p><strong>Job ID:</strong> ${job.id}</p>
+      <p><strong>Device:</strong> ${job.deviceType}</p>
+      <p><strong>Status:</strong> ${job.status}</p>
+      <p><strong>Due Date:</strong> ${new Date(job.dueDate).toLocaleDateString()}</p>
+      <p><strong>Issue:</strong> ${job.issue}</p>
+    `;
+    document.body.appendChild(wrapper);
+
+    const options = {
+      margin: [10, 10],
+      filename: `${job.id}_job_card.pdf`,
+      image: { type: 'jpeg', quality: 0.98 },
+      html2canvas: { scale: 2 },
+      jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+    };
+
+    window.html2pdf(wrapper, options).save();
+    document.body.removeChild(wrapper);
+  };
+
+  // Open status dialog
+  const openStatusUpdateDialog = (job: Job) => {
+    setSelectedJob(job);
+    setNewStatus(job.status);
+    setIsStatusDialogOpen(true);
+  };
+
+  // Open reassign dialog
+  const openReassignDialog = (job: Job) => {
+    setSelectedJob(job);
+    setReassignTechnician('');
+    setIsReassignDialogOpen(true);
+  };
+
+  // Filter jobs based on search term
+  const filteredJobs = jobs.filter((job) =>
+    job.id?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    job.issue?.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  // Status badge renderer
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case 'picked-up':
+        return <Badge className="bg-purple-100 text-purple-800 border-purple-200">Picked Up</Badge>;
+      case 'received':
+        return <Badge className="bg-yellow-100 text-yellow-800 border-yellow-200">Received</Badge>;
+      case 'diagnosis':
+        return <Badge className="bg-blue-100 text-blue-800 border-blue-200">Diagnosis</Badge>;
+      case 'repair-completed':
+        return <Badge className="bg-green-100 text-green-800 border-green-200">Repair Completed</Badge>;
+      default:
+        return <Badge>{status}</Badge>;
+    }
+  };
+
+  // Load data on mount
+  useEffect(() => {
+    const technician = getLoggedInTechnicianName();
+    if (!technician) {
+      toast({
+        title: 'Not Logged In',
+        description: 'Please log in as a technician.',
+        variant: 'destructive',
+      });
+      navigate('/login');
+      return;
+    }
+
+    if (technician.role !== 'technician' && technician.role !== 'admin') {
+      toast({
+        title: 'Access Denied',
+        description: 'Only technicians or admins can access this page.',
+        variant: 'destructive',
+      });
+      navigate('/login');
+      return;
+    }
+
+    fetchTechnicianJobs();
+    fetchTechniciansList();
+  }, []);
 
   return (
-    <div className="space-y-6">
+      <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h1 className="text-2xl font-bold tracking-tight">Technician Dashboard</h1>
         <div className="text-sm text-gray-500">
-          Logged in as <span className="font-semibold">{currentTechnician.name}</span>
-          {currentTechnician.isExternal && <span className="ml-1 text-purple-600">(External)</span>}
-        </div>
+            Logged in as{' '}
+            <span className="font-semibold">{currentTechnician?.name || 'Unknown'}</span>
+          </div>
       </div>
 
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList>
-          {!isExternalTechnician && (
-            <TabsTrigger value="internal" className="flex items-center gap-1.5">
-              <UserRound className="h-4 w-4" />
-              <span>My Assigned Jobs</span>
-            </TabsTrigger>
-          )}
-          <TabsTrigger value="external" className="flex items-center gap-1.5">
-            <ExternalLink className="h-4 w-4" />
-            <span>External Work</span>
-          </TabsTrigger>
-        </TabsList>
-        
-        <TabsContent value="internal">
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle>My Assigned Jobs</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <JobList 
-                jobs={jobs} 
-                onSelectJob={handleSelectJob} 
-                selectedJobId={selectedJob?.id || null} 
+      {/* Search Bar */}
+      <div className="relative max-w-md">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        <Input
+          placeholder="Search jobs..."
+          className="pl-10"
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+        />
+      </div>
+
+      {/* Jobs Table */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Assigned Jobs</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="rounded-md overflow-hidden">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Job ID</TableHead>
+                  <TableHead>Device</TableHead>
+                  <TableHead>Issue</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Due Date</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredJobs.length > 0 ? (
+                  filteredJobs.map((job) => (
+                    <TableRow key={job.id} className="hover:bg-gray-50 cursor-pointer">
+                      <TableCell className="font-medium">{job.id}</TableCell>
+                      <TableCell>{job.deviceType}</TableCell>
+                      <TableCell>{job.issue}</TableCell>
+                      <TableCell>{getStatusBadge(job.status)}</TableCell>
+                      <TableCell>{job.dueDate}</TableCell>
+                      <TableCell className="text-right">
+                        <Button variant="ghost" size="icon" onClick={() => openStatusUpdateDialog(job)}>
+                          <CheckCircle className="h-4 w-4" />
+                        </Button>
+                        <Button variant="ghost" size="icon" onClick={() => openReassignDialog(job)}>
+                          <Users className="h-4 w-4" />
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                ) : (
+                  <TableRow>
+                    <TableCell colSpan={6} className="text-center py-6 text-muted-foreground">
+                      No jobs found matching your criteria.
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Update Status Modal */}
+      <Dialog open={isStatusDialogOpen} onOpenChange={setIsStatusDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Update Job Status</DialogTitle>
+            <DialogDescription>Select the new status below.</DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label htmlFor="status">Select New Status</Label>
+              <Select onValueChange={setNewStatus} value={newStatus}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="diagnosis">Diagnosis</SelectItem>
+                  <SelectItem value="in-progress">In Progress</SelectItem>
+                  <SelectItem value="repair-completed">Repair Completed</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="note">Optional Note</Label>
+              <Input
+                id="note"
+                placeholder="Add a note for admin/customer"
+                value={statusNote}
+                onChange={(e) => setStatusNote(e.target.value)}
               />
-            </CardContent>
-          </Card>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsStatusDialogOpen(false)}>Cancel</Button>
+            <Button onClick={handleUpdateJobStatus}>Update Status</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
-          {selectedJob && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Update Job: {selectedJob.id}</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <JobDetailsEditor 
-                  job={selectedJob}
-                  onUpdate={handleJobUpdate}
-                  onCancel={() => setSelectedJob(null)}
-                  onReassign={() => setIsReassignDialogOpen(true)}
-                  onNotifyCustomer={handleNotifyCustomer}
-                />
-              </CardContent>
-            </Card>
-          )}
-        </TabsContent>
-        
-        <TabsContent value="external">
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle>External Work Assignments</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {externalJobs.length > 0 ? (
-                <div className="space-y-4">
-                  {externalJobs.map(job => (
-                    <div 
-                      key={job.id}
-                      className={`p-4 border rounded-lg cursor-pointer hover:bg-gray-50 transition-colors ${
-                        selectedExternalJob?.id === job.id ? 'border-blue-500 bg-blue-50' : 'border-gray-200'
-                      }`}
-                      onClick={() => handleSelectExternalJob(job)}
-                    >
-                      <div className="flex justify-between items-start">
-                        <div>
-                          <h3 className="font-medium">{job.id}: {job.deviceType}</h3>
-                          <p className="text-sm text-gray-600">{job.issue}</p>
-                          <p className="text-xs text-gray-500 mt-1">Due: {job.dueDate}</p>
-                        </div>
-                        <div>
-                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
-                            External Work
-                          </span>
-                        </div>
-                      </div>
-                    </div>
+      {/* Reassign Technician Modal */}
+      <Dialog open={isReassignDialogOpen} onOpenChange={setIsReassignDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Reassign Job</DialogTitle>
+            <DialogDescription>Select a new technician for this job.</DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label htmlFor="technician">Technician</Label>
+              <Select onValueChange={setReassignTechnician} value={reassignTechnician}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select technician" />
+                </SelectTrigger>
+                <SelectContent>
+                  {technicians.map((tech, index) => (
+                    <SelectItem key={index} value={tech.name}>{tech.name}</SelectItem>
                   ))}
-                </div>
-              ) : (
-                <div className="text-center py-6 text-gray-500">
-                  <p>No external work assignments found.</p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          {showExternalForm && selectedExternalJob && (
-            <ExternalTechnicianWorkForm 
-              jobId={selectedExternalJob.id}
-              onSubmit={handleExternalWorkSubmit}
-            />
-          )}
-        </TabsContent>
-      </Tabs>
-
-      <JobReassignmentDialog 
-        isOpen={isReassignDialogOpen}
-        onOpenChange={setIsReassignDialogOpen}
-        jobId={selectedJob?.id || ''}
-        otherTechnicians={otherTechnicians}
-        onReassign={handleJobReassign}
-      />
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="reason">Reason For Reassignment(Optional):</Label>
+              <Input
+                id="reason"
+                placeholder="Why are you reassigning?"
+                onChange={(e) => setStatusNote(e.target.value)}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsReassignDialogOpen(false)}>Cancel</Button>
+            <Button onClick={handleReassignJob}>Reassign</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

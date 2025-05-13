@@ -1,58 +1,44 @@
-
-import React, { useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import React, { useState, useEffect } from 'react';
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { 
-  Select, 
-  SelectContent, 
-  SelectItem, 
-  SelectTrigger, 
-  SelectValue 
-} from '@/components/ui/select';
-import { 
-  BarChart, 
-  CartesianGrid, 
-  XAxis, 
-  YAxis, 
-  Tooltip, 
+import {
+  BarChart,
+  CartesianGrid,
+  XAxis,
+  YAxis,
+  Tooltip,
   Legend,
   Bar,
   LineChart,
   Line,
-  ResponsiveContainer
+  ResponsiveContainer,
 } from 'recharts';
-import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
+import {
+  ChartContainer,
+  ChartTooltip,
+  ChartTooltipContent,
+} from '@/components/ui/chart';
 import { Clock, CheckCircle, AlertCircle, Clock4 } from 'lucide-react';
 
-// Demo data - in a real app, this would come from an API call
-const technicianPerformance = [
-  {
-    technician: 'Mike Technician',
-    weeklyData: [
-      { week: 'Week 1', completed: 12, inProgress: 5, pending: 3 },
-      { week: 'Week 2', completed: 15, inProgress: 4, pending: 2 },
-      { week: 'Week 3', completed: 10, inProgress: 6, pending: 4 },
-      { week: 'Week 4', completed: 14, inProgress: 3, pending: 1 },
-    ],
-    avgTurnaround: 2.5, // in days
-    totalCompleted: 51,
-    totalInProgress: 18,
-    totalPending: 10,
-  },
-  {
-    technician: 'Lisa Technician',
-    weeklyData: [
-      { week: 'Week 1', completed: 10, inProgress: 4, pending: 2 },
-      { week: 'Week 2', completed: 13, inProgress: 3, pending: 3 },
-      { week: 'Week 3', completed: 11, inProgress: 5, pending: 1 },
-      { week: 'Week 4', completed: 15, inProgress: 2, pending: 2 },
-    ],
-    avgTurnaround: 2.2, // in days
-    totalCompleted: 49,
-    totalInProgress: 14,
-    totalPending: 8,
-  },
-];
+// Types
+interface TechnicianPerformance {
+  technician: string;
+  weeklyData: Array<{ week: string; completed: number; inProgress: number; pending: number }>;
+  avgTurnaround: number;
+  totalCompleted: number;
+  totalInProgress: number;
+  totalPending: number;
+}
+
+interface TurnaroundTime {
+  month: string;
+  turnaround: number;
+}
 
 const config = {
   completed: { label: 'Completed', color: '#86efac' },
@@ -61,31 +47,121 @@ const config = {
 };
 
 const TechnicianAnalytics = () => {
-  const [selectedTechnician, setSelectedTechnician] = useState(technicianPerformance[0].technician);
+  const [performanceData, setPerformanceData] = useState<TechnicianPerformance | null>(null);
+  const [turnaroundData, setTurnaroundData] = useState<TurnaroundTime[]>([]);
+  const [currentTechnician, setCurrentTechnician] = useState<{ name: string; role: string } | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const currentTechData = technicianPerformance.find(
-    tech => tech.technician === selectedTechnician
-  ) || technicianPerformance[0];
+  // Helper to get auth token
+  const getAuthToken = () => localStorage.getItem('authToken');
+
+  // Get logged-in technician name
+  const getLoggedInTechnicianName = () => {
+    const userString = localStorage.getItem('user');
+    if (!userString) return null;
+
+    try {
+      const user = JSON.parse(userString);
+      return {
+        name: user.name || user.email,
+        role: user.role,
+      };
+    } catch (err) {
+      console.error('Failed to parse user data:', err);
+      return null;
+    }
+  };
+
+  // Fetch performance data
+  const fetchPerformanceData = async (technicianName: string) => {
+    try {
+      const authToken = getAuthToken();
+      if (!authToken) throw new Error('Authentication token is missing');
+
+      const response = await fetch(`https://repairly-backend.onrender.com/api/technicians/${encodeURIComponent(technicianName)}/performance`, {
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${authToken}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) throw new Error('Failed to fetch performance data');
+
+      const data = await response.json();
+
+      const formattedData = {
+        technician: technicianName,
+        weeklyData: data.weeklyData || [],
+        avgTurnaround: data.avgTurnaround || 0,
+        totalCompleted: data.totalCompleted || 0,
+        totalInProgress: data.totalInProgress || 0,
+        totalPending: data.totalPending || 0,
+      };
+
+      setPerformanceData(formattedData);
+    } catch (err: any) {
+      setError(err.message || 'Could not load performance data');
+    }
+  };
+
+  // Fetch turnaround trend data
+  const fetchTurnaroundTrend = async (technicianName: string) => {
+    try {
+      const authToken = getAuthToken();
+      if (!authToken) throw new Error('Authentication token is missing');
+
+      const response = await fetch(`https://repairly-backend.onrender.com/api/technicians/${encodeURIComponent(technicianName)}/turnaround-time`, {
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${authToken}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) throw new Error('Failed to fetch turnaround time data');
+
+      const data = await response.json();
+      setTurnaroundData(data);
+    } catch (err: any) {
+      setError(err.message || 'Could not load turnaround time data');
+    }
+  };
+
+  // Load data on mount
+  useEffect(() => {
+    const technician = getLoggedInTechnicianName();
+    if (!technician) {
+      setError('Not logged in');
+      setLoading(false);
+      return;
+    }
+
+    setCurrentTechnician(technician);
+    Promise.all([
+      fetchPerformanceData(technician.name),
+      fetchTurnaroundTrend(technician.name)
+    ]).finally(() => setLoading(false));
+  }, []);
+
+  const currentTechData = performanceData || {
+    technician: '',
+    weeklyData: [],
+    avgTurnaround: 0,
+    totalCompleted: 0,
+    totalInProgress: 0,
+    totalPending: 0,
+  };
 
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold tracking-tight">Technician Analytics</h1>
-        <Select 
-          value={selectedTechnician} 
-          onValueChange={setSelectedTechnician}
-        >
-          <SelectTrigger className="w-[250px]">
-            <SelectValue placeholder="Select technician" />
-          </SelectTrigger>
-          <SelectContent>
-            {technicianPerformance.map(tech => (
-              <SelectItem key={tech.technician} value={tech.technician}>
-                {tech.technician}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+          <h1 className="text-2xl font-bold tracking-tight">Technician Analytics</h1>
+          <div className="text-sm text-gray-500 mt-2">
+            Logged in as{' '}
+            <span className="font-semibold">{currentTechnician?.name || 'Unknown'}</span>
+        </div>
       </div>
 
       {/* Summary Cards */}
@@ -98,12 +174,15 @@ const TechnicianAnalytics = () => {
             <Clock className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{currentTechData.avgTurnaround} days</div>
+            <div className="text-2xl font-bold">
+              {currentTechData.avgTurnaround.toFixed(1)} days
+            </div>
             <p className="text-xs text-muted-foreground">
               Average time from pickup to completion
             </p>
           </CardContent>
         </Card>
+
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">
@@ -118,6 +197,7 @@ const TechnicianAnalytics = () => {
             </p>
           </CardContent>
         </Card>
+
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">
@@ -127,10 +207,12 @@ const TechnicianAnalytics = () => {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {currentTechData.totalInProgress} <span className="text-base font-normal text-muted-foreground">in progress</span>
+              {currentTechData.totalInProgress}{' '}
+              <span className="text-base font-normal text-muted-foreground">in progress</span>
             </div>
             <div className="text-sm">
-              {currentTechData.totalPending} <span className="text-xs text-muted-foreground">pending</span>
+              {currentTechData.totalPending}{' '}
+              <span className="text-xs text-muted-foreground">pending</span>
             </div>
           </CardContent>
         </Card>
@@ -157,25 +239,7 @@ const TechnicianAnalytics = () => {
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis dataKey="week" />
                   <YAxis label={{ value: 'Number of Jobs', angle: -90, position: 'insideLeft' }} />
-                  <ChartTooltip 
-                    content={({ active, payload }) => {
-                      if (active && payload && payload.length) {
-                        return (
-                          <div className="rounded-lg border bg-background p-2 shadow-sm">
-                            <div className="grid grid-cols-2 gap-2">
-                              {payload.map((entry) => (
-                                <div key={entry.name} className="flex flex-col">
-                                  <span className="text-sm font-medium">{entry.name}</span>
-                                  <span className="text-xs">{entry.value} jobs</span>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        );
-                      }
-                      return null;
-                    }}
-                  />
+                  <ChartTooltip content={<ChartTooltipContent />} />
                   <Legend />
                   <Bar dataKey="completed" name="Completed" fill="#86efac" />
                   <Bar dataKey="inProgress" name="In Progress" fill="#93c5fd" />
@@ -196,24 +260,19 @@ const TechnicianAnalytics = () => {
           <div className="h-60">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart
-                data={[
-                  { month: 'Jan', turnaround: 3.2 },
-                  { month: 'Feb', turnaround: 2.9 },
-                  { month: 'Mar', turnaround: 2.7 },
-                  { month: 'Apr', turnaround: 2.5 },
-                ]}
+                data={turnaroundData}
                 margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
               >
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="month" />
                 <YAxis label={{ value: 'Days', angle: -90, position: 'insideLeft' }} />
                 <Tooltip />
-                <Line 
-                  type="monotone" 
-                  dataKey="turnaround" 
-                  name="Avg Turnaround (days)" 
-                  stroke="#8b5cf6" 
-                  strokeWidth={2} 
+                <Line
+                  type="monotone"
+                  dataKey="turnaround"
+                  name="Avg Turnaround (days)"
+                  stroke="#8b5cf6"
+                  strokeWidth={2}
                 />
               </LineChart>
             </ResponsiveContainer>

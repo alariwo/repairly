@@ -14,6 +14,7 @@ import {
   DollarSign,
   Shield,
   UserCog,
+  Menu,
 } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 
@@ -43,7 +44,7 @@ const Sidebar = ({ className, userRole = 'admin' }: SidebarProps) => {
             onClick={() => setIsNavOpen(!isNavOpen)}
             className="text-black focus:outline-none"
           >
-            <Wrench className="w-4 h-4" />
+            <Menu className="w-4 h-4" />
           </button>
         </div>
       )}

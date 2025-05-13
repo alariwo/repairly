@@ -77,6 +77,7 @@ interface Customer {
   jobsCompleted: number;
   totalSpent: number;
   lastJob: string;
+  address: string;
 }
 
 interface Job {
@@ -145,6 +146,7 @@ const Jobs = () => {
   // Helper function to get auth token
   const getAuthToken = () => localStorage.getItem('authToken');
 
+  
   // Fetch all jobs
   const fetchJobs = async () => {
     try {
@@ -198,6 +200,19 @@ const Jobs = () => {
       });
     }
   };
+
+  const handleCustomerChange = (selectedCustomerName) => {
+  const selectedCustomer = customers.find(c => c.name === selectedCustomerName);
+  if (selectedCustomer) {
+    setNewJob(prev => ({
+      ...prev,
+      customer: selectedCustomer.name,
+      customerEmail: selectedCustomer.email || '',
+      phoneNumber: selectedCustomer.phone || '',
+      address: selectedCustomer.address || ''
+    }));
+  }
+};
 
   // Fetch technicians
   const fetchTechnicians = async () => {
@@ -257,14 +272,23 @@ const Jobs = () => {
       const response = await fetch('https://repairly-backend.onrender.com/api/jobs ', {
         method: 'POST',
         headers: {
-          Authorization: `Bearer ${authToken}`,
+           Authorization: `Bearer ${localStorage.getItem('authToken')}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
           ...newJob,
           id: jobId,
-          status: 'received',
+          customer: newJob.customer,
+          customerEmail: newJob.customerEmail,
+          phoneNumber: newJob.phoneNumber,
+          address: newJob.address,
+          device: newJob.device,
+          issue: newJob.issue,
+          serialNumber: newJob.serialNumber,
+          dueDate: newJob.dueDate,
+          priority: newJob.priority,
           assignedTo: 'Unassigned',
+          status: 'received',
           hasNotification: false,
         }),
       });
@@ -531,17 +555,96 @@ const Jobs = () => {
     setStatusUpdateDialogOpen(true);
   };
 
-  // Submit status update
   const handleStatusUpdateSubmit = () => {
     if (!jobToUpdate || newStatus === jobToUpdate.status) return;
-    setJobs(
-      jobs.map(job =>
-        job.id === jobToUpdate.id ? { ...job, status: newStatus } : job
-      )
+  
+    const jobId = jobToUpdate.id;
+    const previousStatus = jobToUpdate.status;
+  
+    const updatedJobs = jobs.map(job =>
+      job.id === jobId ? { ...job, status: newStatus } : job
     );
+    setJobs(updatedJobs);
     setStatusUpdateDialogOpen(false);
+  
+    // 🚀 Now call backend to save status
+    const authToken = localStorage.getItem('authToken');
+    if (!authToken) {
+      toast({
+        title: 'Auth Error',
+        description: 'You are not logged in.',
+        variant: 'destructive',
+      });
+      return;
+    }
+  
+    fetch(`https://repairly-backend.onrender.com/api/jobs/jobs/${jobId}/status`, {
+      method: 'PUT',
+      headers: {
+        'Authorization': `Bearer ${authToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        status: newStatus,
+        note: statusUpdateNote || `Status changed from "${previousStatus}" to "${newStatus}"`,
+      }),
+    })
+      .then(async (response) => {
+        if (!response.ok) {
+          const errorText = await response.text();
+          throw new Error(`Failed to update job status: ${errorText}`);
+        }
+        return response.json();
+      })
+      .then((updatedJob) => {
+       
+        toast({
+          title: 'Status Updated',
+          description: `Job #${jobId} status changed to "${newStatus}"`,
+        });
+  
+       
+        const job = updatedJob || jobs.find(j => j.id === jobId);
+        if (job?.customerEmail && job.customerEmail !== 'N/A') {
+          return fetch(`https://repairly-backend.onrender.com/api/email/status-update `, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${authToken}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              to: job.customerEmail,
+              jobId: job.id,
+              newStatus: newStatus,
+              message: statusUpdateNote || `Your job has been updated to: ${newStatus.replace('-', ' ')}.`,
+            }),
+          });
+        }
+      })
+      .then(() => {
+        toast({
+          title: 'Customer Notified',
+          description: 'An email has been sent to the customer.',
+        });
+      })
+      .catch((err) => {
+        console.error('Error updating job status:', err);
+        toast({
+          title: 'Error',
+          description: 'Failed to update job status or notify customer.',
+          variant: 'destructive',
+        });
+  
+        // Revert local state if needed
+        setJobs(
+          jobs.map(job =>
+            job.id === jobId ? { ...job, status: previousStatus } : job
+          )
+        );
+      });
+  
     setJobToUpdate(null);
-    toast({ title: "Status Updated", description: `Job ${jobToUpdate?.id} status changed to ${newStatus}` });
+    setStatusUpdateNote('');
   };
 
   // Open assign technician dialog
@@ -586,7 +689,7 @@ const Jobs = () => {
     [navigate, toast]
   );
 
-  // Safe close for job details dialog
+
   const safeCloseJobDetailsDialog = () => {
     setJobDetailsDialogOpen(false);
     setJobToView(null);
@@ -852,136 +955,192 @@ const Jobs = () => {
         </CardContent>
       </Card>
 
-      {/* New Job Dialog */}
-      <Dialog open={isNewJobDialogOpen} onOpenChange={setIsNewJobDialogOpen}>
-        <DialogContent className="sm:max-w-[600px]">
-          <DialogHeader>
-            <DialogTitle>Create New Repair Job</DialogTitle>
-            <DialogDescription>Enter the details for the new repair job below.</DialogDescription>
-          </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid gap-2">
-              <Label htmlFor="customer">Customer Name</Label>
-              <Input
-                id="customer"
-                name="customer"
-                placeholder="Customer name"
-                value={newJob.customer}
-                onChange={(e) => setNewJob({ ...newJob, customer: e.target.value })}
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="device">Device Type</Label>
-              <Input
-                id="device"
-                name="device"
-                placeholder="Phone, laptop, etc."
-                value={newJob.device}
-                onChange={(e) => setNewJob({ ...newJob, device: e.target.value })}
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="issue">Issue Description</Label>
-              <Textarea
-                id="issue"
-                name="issue"
-                placeholder="Describe the issue with the device"
-                value={newJob.issue}
-                onChange={(e) => setNewJob({ ...newJob, issue: e.target.value })}
-                rows={3}
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="serialNumber">Serial Number (Optional)</Label>
-              <Input
-                id="serialNumber"
-                name="serialNumber"
-                placeholder="Device serial number"
-                value={newJob.serialNumber}
-                onChange={(e) => setNewJob({ ...newJob, serialNumber: e.target.value })}
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="customerEmail">Customer Email</Label>
-              <Input
-                id="customerEmail"
-                name="customerEmail"
-                placeholder="customer@example.com"
-                value={newJob.customerEmail}
-                onChange={(e) => setNewJob({ ...newJob, customerEmail: e.target.value })}
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="phoneNumber">Phone Number</Label>
-              <Input
-                id="phoneNumber"
-                name="phoneNumber"
-                placeholder="+1 (555) 123-4567"
-                value={newJob.phoneNumber}
-                onChange={(e) => setNewJob({ ...newJob, phoneNumber: e.target.value })}
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="address">Address</Label>
-              <Input
-                id="address"
-                name="address"
-                placeholder="Customer address"
-                value={newJob.address}
-                onChange={(e) => setNewJob({ ...newJob, address: e.target.value })}
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="priority">Priority Level</Label>
-              <Select value={newJob.priority} onValueChange={(value) => setNewJob({ ...newJob, priority: value })}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select priority" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="high">High</SelectItem>
-                  <SelectItem value="medium">Medium</SelectItem>
-                  <SelectItem value="low">Low</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="dueDate">Due Date</Label>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant={"outline"}
-                    className={cn(
-                      "justify-start text-left font-normal",
-                      !newJob.dueDate && "text-muted-foreground"
-                    )}
-                  >
-                    <CalendarDays className="mr-2 h-4 w-4" />
-                    {newJob.dueDate ? format(new Date(newJob.dueDate), "PPP") : <span>Pick a date</span>}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <CalendarComponent
-                    mode="single"
-                    selected={newJob.dueDate ? new Date(newJob.dueDate) : undefined}
-                    onSelect={(date) =>
-                      setNewJob({ ...newJob, dueDate: date?.toISOString().split("T")[0] || "" })
-                    }
-                    initialFocus
-                  />
-                </PopoverContent>
-              </Popover>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsNewJobDialogOpen(false)}>
-              Cancel
+     {/* Create New Job Dialog */}
+<Dialog open={isNewJobDialogOpen} onOpenChange={setIsNewJobDialogOpen}>
+  <DialogContent className="sm:max-w-[600px] max-h-screen overflow-y-auto">
+    <DialogHeader>
+      <DialogTitle>Create New Repair Job</DialogTitle>
+      <DialogDescription>Enter the details for the new repair job below.</DialogDescription>
+    </DialogHeader>
+
+    <div className="grid gap-4 py-4 px-1">
+      <div className="grid gap-2">
+        <Label htmlFor="customer">Customer Name</Label>
+        <Select
+          value={newJob.customer}
+          onValueChange={handleCustomerChange}
+        >
+          <SelectTrigger id="customer">
+            <SelectValue placeholder="Select a customer" />
+          </SelectTrigger>
+          <SelectContent>
+            {customers.length > 0 ? (
+              customers.map((customer) => (
+                <SelectItem key={customer.id} value={customer.name}>
+                  {customer.name}
+                </SelectItem>
+              ))
+            ) : (
+              <SelectItem disabled value="no-customers">
+                No customers found
+              </SelectItem>
+            )}
+          </SelectContent>
+        </Select>
+      </div>
+
+      {/* Device Type */}
+      <div className="grid gap-2">
+        <Label htmlFor="device">Device Type</Label>
+        <Input
+          id="device"
+          name="device"
+          placeholder="Phone, laptop, etc."
+          value={newJob.device}
+          onChange={(e) => setNewJob({ ...newJob, device: e.target.value })}
+        />
+      </div>
+
+      {/* Issue Description */}
+      <div className="grid gap-2">
+        <Label htmlFor="issue">Issue Description</Label>
+        <Textarea
+          id="issue"
+          name="issue"
+          placeholder="Describe the issue with the device"
+          value={newJob.issue}
+          onChange={(e) => setNewJob({ ...newJob, issue: e.target.value })}
+          rows={4}
+        />
+      </div>
+
+      {/* Serial Number (Optional) */}
+      <div className="grid gap-2">
+        <Label htmlFor="serialNumber">Serial Number (Optional)</Label>
+        <Input
+          id="serialNumber"
+          name="serialNumber"
+          placeholder="Device serial number"
+          value={newJob.serialNumber}
+          onChange={(e) => setNewJob({ ...newJob, serialNumber: e.target.value })}
+        />
+      </div>
+
+  
+      <div className="grid sm:grid-cols-2 gap-4">
+       
+        <div className="grid gap-2">
+          <Label htmlFor="customerEmail">Customer Email</Label>
+          <Input
+            id="customerEmail"
+            name="customerEmail"
+            placeholder="customer@example.com"
+            value={newJob.customerEmail || ''}
+            readOnly
+            className="bg-gray-50 cursor-not-allowed"
+          />
+        </div>
+
+        {/* Phone Number */}
+        <div className="grid gap-2">
+          <Label htmlFor="phoneNumber">Phone Number</Label>
+          <Input
+            id="phoneNumber"
+            name="phoneNumber"
+            placeholder="+1 (555) 123-4567"
+            value={newJob.phoneNumber || ''}
+            readOnly
+            className="bg-gray-50 cursor-not-allowed"
+          />
+        </div>
+
+        {/* Address */}
+        <div className="grid gap-2 sm:col-span-2">
+          <Label htmlFor="address">Address</Label>
+          <Input
+            id="address"
+            name="address"
+            placeholder="Customer address"
+            value={newJob.address || ''}
+            readOnly
+            className="bg-gray-50 cursor-not-allowed"
+          />
+        </div>
+      </div>
+
+      {/* Priority Level */}
+      <div className="grid gap-2">
+        <Label htmlFor="priority">Priority Level</Label>
+        <Select
+          value={newJob.priority}
+          onValueChange={(value) =>
+            setNewJob({ ...newJob, priority: value })
+          }
+        >
+          <SelectTrigger id="priority">
+            <SelectValue placeholder="Select priority" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="high">High</SelectItem>
+            <SelectItem value="medium">Medium</SelectItem>
+            <SelectItem value="low">Low</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
+      {/* Due Date */}
+      <div className="grid gap-2">
+        <Label htmlFor="dueDate">Due Date</Label>
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button
+              variant="outline"
+              className={cn(
+                'justify-start text-left font-normal',
+                !newJob.dueDate && 'text-muted-foreground'
+              )}
+            >
+              <CalendarDays className="mr-2 h-4 w-4" />
+              {newJob.dueDate
+                ? format(new Date(newJob.dueDate), 'PPP')
+                : 'Pick a date'}
             </Button>
-            <Button className="bg-repairam hover:bg-repairam-dark" onClick={handleCreateJob}>
-              Create Job
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+          </PopoverTrigger>
+          <PopoverContent className="w-auto p-0" align="start">
+            <CalendarComponent
+              mode="single"
+              selected={
+                newJob.dueDate ? new Date(newJob.dueDate) : undefined
+              }
+              onSelect={(date) =>
+                setNewJob({
+                  ...newJob,
+                  dueDate: date?.toISOString().split('T')[0] || '',
+                })
+              }
+              initialFocus
+            />
+          </PopoverContent>
+        </Popover>
+      </div>
+    </div>
+
+    <DialogFooter className="mt-6">
+      <Button
+        variant="outline"
+        onClick={() => setIsNewJobDialogOpen(false)}
+      >
+        Cancel
+      </Button>
+      <Button
+        className="bg-repairam hover:bg-repairam-dark"
+        onClick={handleCreateJob}
+      >
+        Create Job
+      </Button>
+    </DialogFooter>
+  </DialogContent>
+</Dialog>
 
       {/* Status Update Dialog */}
       <Dialog open={statusUpdateDialogOpen} onOpenChange={setStatusUpdateDialogOpen}>
