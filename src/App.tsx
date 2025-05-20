@@ -18,6 +18,7 @@ import UserManagement from "./pages/UserManagement";
 import Auth from "./pages/Auth";
 import ProtectedRoute from "./components/auth/ProtectedRoute";
 
+
 const queryClient = new QueryClient();
 
 const App = () => {

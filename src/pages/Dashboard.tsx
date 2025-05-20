@@ -45,14 +45,12 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
 
-
 interface Job {
-  _id?: string;
   id: string;
-  customerId: string;
+  customer: string;
   deviceType: string;
   issueDescription: string;
-  priority: 'low' | 'medium' | 'high';
+  serialNumber: string;
   status: string;
   dueDate: string;
   assignedTo: string;
@@ -78,8 +76,10 @@ const getStatusBadge = (status: string) => {
       return <Badge className="bg-yellow-100 text-yellow-800 border-yellow-200">Received</Badge>;
     case 'diagnosis':
       return <Badge className="bg-blue-100 text-blue-800 border-blue-200">Diagnosis</Badge>;
+    case 'in-progress':
+      return <Badge className="bg-blue-100 text-blue-800 border-blue-200">In Progress</Badge>;
     case 'repair-completed':
-    case 'delivered': 
+    case 'delivered':
       return <Badge className="bg-green-100 text-green-800 border-green-200">Repair Completed</Badge>;
     default:
       return <Badge>{status}</Badge>;
@@ -91,7 +91,7 @@ const getPriorityBadge = (priority: string) => {
     case 'high':
       return <Badge className="bg-red-100 text-red-800 border-red-200">High</Badge>;
     case 'medium':
-      return <Badge className="bg-yellow-100 text-yellow-800 border-yellow-200">Medium</Badge>;
+      return <Badge className="bg-yellow-101 text-yellow-800 border-yellow-200">Medium</Badge>;
     case 'low':
       return <Badge className="bg-green-100 text-green-800 border-green-200">Low</Badge>;
     default:
@@ -112,11 +112,24 @@ const Dashboard = () => {
   });
 
   const [searchTerm, setSearchTerm] = useState('');
+  const [revenueChartData, setRevenueChartData] = useState<
+    Array<{ name: string; revenue: number }>
+  >([]);
+
   const navigate = useNavigate();
   const { toast } = useToast();
 
   // Helper function to get auth token
   const getAuthToken = () => localStorage.getItem('authToken');
+
+  // Format date safely
+  const formatDueDate = (dateString: string): string => {
+    try {
+      return new Date(dateString).toLocaleDateString();
+    } catch {
+      return 'Invalid Date';
+    }
+  };
 
   // Fetch recent jobs
   const fetchRecentJobs = async () => {
@@ -135,21 +148,30 @@ const Dashboard = () => {
       if (!response.ok) throw new Error('Failed to fetch recent jobs');
       const data = await response.json();
 
-      const formattedJobs = data.map(job => ({
+      const formattedJobs = data.map((job: any) => ({
         ...job,
-        id: job.id || job.id,
-        dueDate: job.dueDate ? new Date(job.dueDate).toLocaleDateString() : 'N/A',
-        createdAt: job.createdAt ? new Date(job.createdAt).toLocaleDateString() : 'N/A'
+        id: job.id || job._id,
+        dueDate: formatDueDate(job.dueDate),
+        createdAt: job.createdAt ? formatDueDate(job.createdAt) : 'N/A'
       }));
 
-      setRecentJobs(formattedJobs);
-
-
-      const totalCompleted = [...formattedJobs].filter(j =>
-        j.status === 'repair-completed' || j.status === 'delivered'
+      const completed = formattedJobs.filter(j =>
+        ['repair-completed', 'delivered'].includes(j.status)
       ).length;
 
-      setStats(prev => ({ ...prev, completedJobs: totalCompleted }));
+      const overdue = formattedJobs.filter(
+        j => !['repair-completed', 'delivered'].includes(j.status) && new Date(j.dueDate) < new Date()
+      ).length;
+
+      const pending = formattedJobs.length - completed - overdue;
+
+      setRecentJobs(formattedJobs);
+      setStats(prev => ({
+        ...prev,
+        completedJobs: completed,
+        overdueJobs: overdue,
+        pendingJobs: pending,
+      }));
     } catch (error) {
       console.error(error);
       toast({
@@ -177,14 +199,16 @@ const Dashboard = () => {
       if (!response.ok) throw new Error('Failed to fetch overdue jobs');
       const data = await response.json();
 
-      const formattedOverdueJobs = data.slice(0, 3).map(job => ({
-        ...job,
-        id: job.id || job.id,
-        dueDate: job.dueDate ? new Date(job.dueDate).toLocaleDateString() : 'N/A',
-        createdAt: job.createdAt ? new Date(job.createdAt).toLocaleDateString() : 'N/A'
-      }));
+      const filteredData = data
+        .filter(job => !['repair-completed', 'delivered'].includes(job.status))
+        .map(job => ({
+          ...job,
+          id: job.id || job._id,
+          dueDate: formatDueDate(job.dueDate),
+        }));
 
-      setOverdueJobs(formattedOverdueJobs);
+      setOverdueJobs(filteredData);
+      setStats(prev => ({ ...prev, overdueJobs: filteredData.length }));
     } catch (error) {
       console.error(error);
       toast({
@@ -195,7 +219,7 @@ const Dashboard = () => {
     }
   };
 
-
+  // Fetch dashboard stats
   const fetchDashboardStats = async () => {
     try {
       const authToken = getAuthToken();
@@ -244,55 +268,7 @@ const Dashboard = () => {
     }
   };
 
-
-  const fetchRevenueStats = async () => {
-    try {
-      const authToken = getAuthToken();
-      if (!authToken) throw new Error('Authentication token is missing');
-
-      const response = await fetch('https://repairly-backend.onrender.com/api/invoices/total-value-last-month ', {
-        method: 'GET',
-        headers: {
-          Authorization: `Bearer ${authToken}`,
-          'Content-Type': 'application/json',
-        },
-      });
-
-      if (!response.ok) throw new Error('Failed to fetch last month value');
-      const result = await response.json();
-
  
-      const currentMonth = new Date().toLocaleString('default', { month: 'short' });
-      const currentMonthValue = revenueData.find(d => d.name === currentMonth)?.revenue || 0;
-
-      setStats(prev => ({
-        ...prev,
-        revenueThisMonth: currentMonthValue,
-        revenueLastMonth: result.totalValue || 0
-      }));
-    } catch (error) {
-      console.error(error);
-    }
-  };
-
-
-  const [revenueData, setRevenueData] = useState<
-    Array<{ name: string; revenue: number }>
-  >([
-    { name: 'Jan', revenue: 0 },
-    { name: 'Feb', revenue: 0 },
-    { name: 'Mar', revenue: 0 },
-    { name: 'Apr', revenue: 0 },
-    { name: 'May', revenue: 0 },
-    { name: 'Jun', revenue: 0 },
-    { name: 'Jul', revenue: 0 },
-    { name: 'Aug', revenue: 0 },
-    { name: 'Sep', revenue: 0 },
-    { name: 'Oct', revenue: 0 },
-    { name: 'Nov', revenue: 0 },
-    { name: 'Dec', revenue: 0 },
-  ]);
-
   const fetchRevenueTrendData = async () => {
     try {
       const authToken = getAuthToken();
@@ -309,20 +285,56 @@ const Dashboard = () => {
       if (!response.ok) throw new Error('Failed to fetch revenue trend');
       const data = await response.json();
 
-     
-      setRevenueData(data);
+      // Ensure data matches Recharts format: { name: "Jan", revenue: 4500 }
+      const chartReadyData = data.map(item => ({
+        name: item.month || item.name,
+        revenue: item.totalValue || item.revenue || 0,
+      }));
+
+      setRevenueChartData(chartReadyData);
     } catch (error) {
       console.error('Revenue trend fetch failed:', error);
     }
   };
 
+
+  const fetchRevenueStats = async () => {
+    try {
+      const authToken = getAuthToken();
+      if (!authToken) throw new Error('Authentication token is missing');
+
+      const response = await fetch('https://repairly-backend.onrender.com/api/invoices/total-value-last-month ', {
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${authToken}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) throw new Error('Failed to fetch revenue this month');
+      const result = await response.json();
+
+      const currentMonth = new Date().toLocaleString('default', { month: 'short' });
+      const currentMonthValue = revenueChartData.find(d => d.name === currentMonth)?.revenue || 0;
+
+      setStats(prev => ({
+        ...prev,
+        revenueThisMonth: currentMonthValue,
+        revenueLastMonth: result.totalValue || 0
+      }));
+    } catch (error) {
+      console.error(error);
+    }
+  };
+
+  
   useEffect(() => {
     fetchRecentJobs();
     fetchOverdueJobs();
     fetchDashboardStats();
     fetchCustomerCount();
     fetchRevenueTrendData();     
-    fetchRevenueStats();        
+    fetchRevenueStats();         
   }, []);
 
   // Handle view job details
@@ -356,97 +368,90 @@ const Dashboard = () => {
     }
   }, [navigate]);
 
-  // Filter recent jobs based on search term
-  const filteredRecentJobs = recentJobs.filter((job) =>
-    job.id?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    job.customerEmail?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    job.issueDescription?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  // Filter users based on search term
+  const filteredRecentJobs = useMemo(() => {
+    return recentJobs.filter((job) =>
+      job.id?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      job.customerEmail?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      job.deviceType?.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  }, [recentJobs, searchTerm]);
 
-  const filteredOverdueJobs = overdueJobs.filter((job) =>
-    job.id?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    job.customerEmail?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    job.issueDescription?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredOverdueJobs = useMemo(() => {
+    return overdueJobs.filter((job) =>
+      job.id?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      job.customerEmail?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      job.issueDescription?.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  }, [overdueJobs, searchTerm]);
 
+  // Hardcoded repair jobs data — keep as-is
+  const repairJobsData = [
+    { name: 'Phone Repairs', value: 65 },
+    { name: 'Computer Repairs', value: 25 },
+    { name: 'Tablet Repairs', value: 10 },
+  ];
 
+  // Helper: Get percentage change
   const usePercentageChange = (current: number, previous: number) => {
-    if (!previous) return {
-      label: current > 0 ? '+100%' : '0%',
-      isPositive: current > 0
-    };
+    if (!previous) return { label: '+100%', isPositive: true };
     const change = ((current - previous) / previous) * 100;
     return {
       label: `${change > 0 ? '+' : ''}${change.toFixed(1)}%`,
-      isPositive: change >= 0
+      isPositive: change >= 0,
     };
   };
 
   const revenueChange = usePercentageChange(stats.revenueThisMonth, stats.revenueLastMonth);
 
+  const statCards = [
+    {
+      title: 'Pending Jobs',
+      icon: <Clock className="h-4 w-4 text-muted-foreground" />,
+      value: stats.pendingJobs.toString(),
+      subtitle: 'Need attention',
+    },
+    {
+      title: 'Completed Jobs',
+      icon: <CheckCircle className="h-4 w-4 text-muted-foreground" />,
+      value: stats.completedJobs.toString(),
+      subtitle: 'This month',
+    },
+    {
+      title: 'Active Customers',
+      icon: <Users className="h-4 w-4 text-muted-foreground" />,
+      value: stats.activeCustomers.toString(),
+      subtitle: '+12% from last month',
+    },
+    {
+      title: 'Overdue Repairs',
+      icon: <Calendar className="h-4 w-4 text-red-500" />,
+      value: stats.overdueJobs.toString(),
+      subtitle: 'Need immediate attention',
+    },
+  ];
+
   return (
     <div className="space-y-6">
-
+      {/* Header */}
       <div className="flex justify-between items-center">
         <h1 className="text-2xl font-bold tracking-tight">Dashboard</h1>
       </div>
 
- 
+      {/* Stat Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-            <CardTitle className="text-sm font-medium">Pending Jobs</CardTitle>
-            <Clock className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-xl font-bold">{stats.pendingJobs}</div>
-            <p className="text-xs text-muted-foreground mt-1">Need attention</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-            <CardTitle className="text-sm font-medium">Completed Jobs</CardTitle>
-            <CheckCircle className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-xl font-bold">{stats.completedJobs}</div>
-            <p className="text-xs text-muted-foreground mt-1">
-              {revenueChange.isPositive ? (
-                <span className="text-green-500 inline-flex items-center">
-                  <TrendingUp className="mr-1 h-3 w-3" /> {revenueChange.label}
-                </span>
-              ) : (
-                <span className="text-red-500 inline-flex items-center">
-                  <TrendingDown className="mr-1 h-3 w-3" /> {revenueChange.label}
-                </span>
-              )}
-              {' '}from last month
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-            <CardTitle className="text-sm font-medium">Active Customers</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-xl font-bold">{stats.activeCustomers}</div>
-            <p className="text-xs text-muted-foreground mt-1">+12% from last month</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-            <CardTitle className="text-sm font-medium">Overdue Repairs</CardTitle>
-            <Calendar className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-xl font-bold text-red-500">{stats.overdueJobs}</div>
-            <p className="text-xs text-muted-foreground mt-1">Need immediate attention</p>
-          </CardContent>
-        </Card>
+        {statCards.map((card, index) => (
+          <Card key={index}>
+            <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
+              <CardTitle className="text-sm font-medium">{card.title}</CardTitle>
+              {card.icon}
+            </CardHeader>
+            <CardContent>
+              <div className="text-xl font-bold">{card.value}</div>
+              <p className="text-xs text-muted-foreground mt-1">{card.subtitle}</p>
+            </CardContent>
+          </Card>
+        ))}
       </div>
 
       {/* Recent Jobs & Overdue Repairs */}
@@ -468,7 +473,7 @@ const Dashboard = () => {
                   <TableRow>
                     <TableHead>Job ID</TableHead>
                     <TableHead>Customer</TableHead>
-                    <TableHead>Service</TableHead>
+                    <TableHead>Issue</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead>Due Date</TableHead>
                   </TableRow>
@@ -503,7 +508,7 @@ const Dashboard = () => {
           <CardHeader>
             <div className="flex justify-between items-center">
               <CardTitle>Overdue Repairs</CardTitle>
-              <Button variant="link" className="p-0 h-auto" onClick={() => handleViewOverdueJob('all')}>
+              <Button variant="link" className="p-0 h-auto" onClick={() => handleViewJobDetails('all')}>
                 View All
               </Button>
             </div>
@@ -515,7 +520,7 @@ const Dashboard = () => {
                   <TableRow>
                     <TableHead>Job ID</TableHead>
                     <TableHead>Customer</TableHead>
-                    <TableHead>Service</TableHead>
+                    <TableHead>Issue</TableHead>
                     <TableHead>Due Date</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
@@ -523,13 +528,13 @@ const Dashboard = () => {
                 <TableBody>
                   {filteredOverdueJobs.length > 0 ? (
                     filteredOverdueJobs.map((job) => (
-                      <TableRow key={job.id} className="hover:bg-gray-50 cursor-pointer">
+                      <TableRow key={job.id} className="hover:bg-gray-50">
                         <TableCell className="font-medium">{job.id}</TableCell>
                         <TableCell>{job.customer || 'Unknown'}</TableCell>
-                        <TableCell>{job.issue || 'N/A'}</TableCell>
-                        <TableCell>{new Date(job.dueDate).toLocaleDateString()}</TableCell>
+                        <TableCell>{job.issueDescription || 'N/A'}</TableCell>
+                        <TableCell>{new Date(job.dueDate).toLocaleDateString()|| 'Date Not Known'}</TableCell>
                         <TableCell className="text-right">
-                          <Button variant="ghost" size="icon" onClick={() => handleViewOverdueJob(job.id)}>
+                          <Button variant="ghost" size="icon" onClick={() => handleViewJobDetails(job.id)}>
                             <MoreHorizontal className="h-4 w-4" />
                           </Button>
                         </TableCell>
@@ -549,6 +554,7 @@ const Dashboard = () => {
         </Card>
       </div>
 
+      {/* ✅ Fixed: Revenue Trend Graph */}
       <Card>
         <CardHeader>
           <CardTitle>Revenue Trend</CardTitle>
@@ -556,7 +562,7 @@ const Dashboard = () => {
         <CardContent>
           <div style={{ width: '100%', height: 300 }}>
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={revenueData}>
+              <BarChart data={revenueChartData}>
                 <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
                 <XAxis dataKey="name" />
                 <YAxis />
@@ -565,7 +571,7 @@ const Dashboard = () => {
                   dataKey="revenue"
                   fill="#00A651"
                   radius={[4, 4, 0, 0]}
-                  background={{ fill: '#E0E0E0' }}
+                  background={{ fill: '#E0E0E0' }} // Faded bars for empty months
                 />
               </BarChart>
             </ResponsiveContainer>
@@ -573,7 +579,7 @@ const Dashboard = () => {
         </CardContent>
       </Card>
 
-  
+      {/* Repair Jobs Card */}
       <Card>
         <CardHeader className="pb-2">
           <CardTitle>Repair Jobs</CardTitle>
